@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { SettingsIcon } from '@/components/ui/settings';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/layout/page-header';
 import { CategorySection } from './category-section';
@@ -50,6 +51,7 @@ export function DashboardClient({ categories, services }: DashboardClientProps) 
         description="Dashboard for u"
         >
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="outline" size="icon" asChild>

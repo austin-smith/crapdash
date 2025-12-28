@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus } from 'lucide-react';
 import { ArrowLeftIcon } from '@/components/ui/arrow-left';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { CategoryList } from '@/components/admin/category-list';
 import { ServiceList } from '@/components/admin/service-list';
 import { CategoryFormModal } from '@/components/admin/category-form-modal';
@@ -90,6 +91,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
         title="Crapdash Admin"
         description="Manage categories and services"
       >
+        <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="outline" size="icon" asChild>
