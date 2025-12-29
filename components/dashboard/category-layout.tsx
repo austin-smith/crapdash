@@ -20,11 +20,11 @@ export function CategoryLayout({ category, services, layout }: CategoryLayoutPro
     <section className={cn(!isGrid && 'flex flex-col')}>
       <h2
         className={cn(
-          'flex items-center gap-2 text-xl font-bold text-foreground mb-4',
-          !isGrid && 'pb-2 border-b border-border'
+          'flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3',
+          !isGrid && 'pb-2 border-b border-border/50'
         )}
       >
-        <CategoryIcon name={category.icon} className="h-5 w-5" />
+        <CategoryIcon name={category.icon} className="h-4 w-4 opacity-70" />
         {category.name}
       </h2>
       <div

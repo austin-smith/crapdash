@@ -168,8 +168,8 @@ export function AdminClient({ categories: initialCategories, services: initialSe
                       <EmptyMedia>
                         <FolderOpen className="size-10 text-primary" />
                       </EmptyMedia>
-                      <EmptyTitle>No categories yet</EmptyTitle>
-                      <EmptyDescription>Create one to get started.</EmptyDescription>
+                      <EmptyTitle>No categories configured</EmptyTitle>
+                      <EmptyDescription>Add one to get started.</EmptyDescription>
                     </EmptyHeader>
                     <Button onClick={handleAddCategory}>
                       <Plus className="h-4 w-4" />
@@ -214,11 +214,11 @@ export function AdminClient({ categories: initialCategories, services: initialSe
                       <EmptyMedia>
                         <Computer className="size-10 text-primary" />
                       </EmptyMedia>
-                      <EmptyTitle>No services yet</EmptyTitle>
+                      <EmptyTitle>No services configured</EmptyTitle>
                       <EmptyDescription>
                         {categories.length === 0
-                          ? 'Create a category first, then add services.'
-                          : 'Add one to get started.'}
+                          ? 'Create a category to start adding services.'
+                          : 'Add a service to see it on your dashboard.'}
                       </EmptyDescription>
                     </EmptyHeader>
                     <Button onClick={handleAddService} disabled={categories.length === 0}>
