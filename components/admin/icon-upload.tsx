@@ -127,7 +127,7 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || !serviceId}
             >
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4" />
               {isUploading ? 'Uploading...' : currentIcon ? 'Change Icon' : 'Upload Icon'}
             </Button>
 
@@ -139,7 +139,7 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
                 onClick={handleClear}
                 disabled={isUploading}
               >
-                <X className="w-4 h-4 mr-2" />
+                <X className="w-4 h-4" />
                 Remove
               </Button>
             )}

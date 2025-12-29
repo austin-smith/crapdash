@@ -84,7 +84,7 @@ export function CategoryList({ categories, services, onEdit, onDeleted }: Catego
                     onClick={() => onEdit(category)}
                     className="flex-1"
                   >
-                    <Pencil className="h-4 w-4 mr-2" />
+                    <Pencil className="h-4 w-4" />
                     Edit
                   </Button>
                   <Button
@@ -93,7 +93,7 @@ export function CategoryList({ categories, services, onEdit, onDeleted }: Catego
                     onClick={() => handleDeleteClick(category)}
                     className="flex-1 text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-4 w-4" />
                     Delete
                   </Button>
                 </div>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./public/compy.png" alt="crapdash logo" width="120" />
+</p>
+
 # crapdash
 
 Dead simple homepage to organize your links and services. Group them into categories and access everything from one place.

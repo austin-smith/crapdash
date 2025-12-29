@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { Computer } from 'lucide-react';
 import { SettingsIcon } from '@/components/ui/settings';
+import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { PageHeader } from '@/components/layout/page-header';
@@ -10,6 +12,7 @@ import { CategoryLayout } from './category-layout';
 import { SearchBar } from './search-bar';
 import { LayoutToggle } from './layout-toggle';
 import { useLayout } from '@/hooks/use-layout';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import type { Category, Service, DashboardLayout } from '@/lib/types';
 
 interface DashboardClientProps {
@@ -68,18 +71,38 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <LayoutToggle layout={layout} onLayoutChange={setLayout} />
         <ThemeToggle />
-        <Button variant="outline" size="icon-lg" asChild>
-          <Link href="/admin">
-            <SettingsIcon size={18} />
-          </Link>
-        </Button>
+        <AnimateIcon animateOnHover asChild>
+          <Button variant="outline" size="icon-lg" asChild>
+            <Link href="/admin">
+              <SettingsIcon size={18} />
+            </Link>
+          </Button>
+        </AnimateIcon>
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        {filteredData.categories.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No services found matching your search.</p>
-          </div>
+        {services.length === 0 ? (
+          <Empty className="py-16">
+            <EmptyHeader>
+              <EmptyMedia>
+                <Computer className="size-10 text-primary" />
+              </EmptyMedia>
+              <EmptyTitle>No services configured</EmptyTitle>
+              <EmptyDescription>Add categories and services to get started.</EmptyDescription>
+            </EmptyHeader>
+            <AnimateIcon animateOnHover asChild>
+              <Button asChild>
+                <Link href="/admin">
+                  <SettingsIcon size={16} />
+                  Go to Admin
+                </Link>
+              </Button>
+            </AnimateIcon>
+          </Empty>
+        ) : filteredData.categories.length === 0 ? (
+          <p className="text-center py-12 text-muted-foreground">
+            No services found matching your search.
+          </p>
         ) : (
           <div
             className={

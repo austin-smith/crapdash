@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
 import { Separator } from '@/components/ui/separator';
-import { Plus } from 'lucide-react';
+import { Plus, FolderOpen, Computer } from 'lucide-react';
 import { ArrowLeftIcon } from '@/components/ui/arrow-left';
+import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { CategoryList } from '@/components/admin/category-list';
 import { ServiceList } from '@/components/admin/service-list';
 import { CategoryFormModal } from '@/components/admin/category-form-modal';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import type { Category, Service } from '@/lib/types';
 
 interface AdminClientProps {
@@ -93,11 +95,13 @@ export function AdminClient({ categories: initialCategories, services: initialSe
         <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" asChild>
-              <Link href="/">
-                <ArrowLeftIcon size={14} />
-              </Link>
-            </Button>
+            <AnimateIcon animateOnHover asChild>
+              <Button variant="outline" size="icon-lg" asChild>
+                <Link href="/">
+                  <ArrowLeftIcon size={14} />
+                </Link>
+              </Button>
+            </AnimateIcon>
           </TooltipTrigger>
           <TooltipContent side="bottom">Back to Dashboard</TooltipContent>
         </Tooltip>
@@ -111,18 +115,30 @@ export function AdminClient({ categories: initialCategories, services: initialSe
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Categories</CardTitle>
-                  <Button onClick={handleAddCategory}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Category
-                  </Button>
+                  {categories.length > 0 && (
+                    <Button onClick={handleAddCategory}>
+                      <Plus className="h-4 w-4" />
+                      Add Category
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
                 <Separator className="mb-4" />
                 {categories.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No categories yet. Create one to get started.
-                  </div>
+                  <Empty className="py-8">
+                    <EmptyHeader>
+                      <EmptyMedia>
+                        <FolderOpen className="size-10 text-primary" />
+                      </EmptyMedia>
+                      <EmptyTitle>No categories yet</EmptyTitle>
+                      <EmptyDescription>Create one to get started.</EmptyDescription>
+                    </EmptyHeader>
+                    <Button onClick={handleAddCategory}>
+                      <Plus className="h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </Empty>
                 ) : (
                   <CategoryList
                     categories={categories}
@@ -141,23 +157,34 @@ export function AdminClient({ categories: initialCategories, services: initialSe
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Services</CardTitle>
-                  <Button onClick={handleAddService} disabled={categories.length === 0}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Service
-                  </Button>
+                  {services.length > 0 && (
+                    <Button onClick={handleAddService}>
+                      <Plus className="h-4 w-4" />
+                      Add Service
+                    </Button>
+                  )}
                 </div>
-                {categories.length === 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Create a category first before adding services.
-                  </p>
-                )}
               </CardHeader>
               <CardContent>
                 <Separator className="mb-4" />
                 {services.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No services yet. Add one to get started.
-                  </div>
+                  <Empty className="py-8">
+                    <EmptyHeader>
+                      <EmptyMedia>
+                        <Computer className="size-10 text-primary" />
+                      </EmptyMedia>
+                      <EmptyTitle>No services yet</EmptyTitle>
+                      <EmptyDescription>
+                        {categories.length === 0
+                          ? 'Create a category first, then add services.'
+                          : 'Add one to get started.'}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <Button onClick={handleAddService} disabled={categories.length === 0}>
+                      <Plus className="h-4 w-4" />
+                      Add Service
+                    </Button>
+                  </Empty>
                 ) : (
                   <ServiceList
                     services={services}

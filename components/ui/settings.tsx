@@ -1,10 +1,11 @@
 'use client';
 
 import type { HTMLAttributes } from 'react';
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useEffect } from 'react';
 import { motion, useAnimation } from 'motion/react';
 
 import { cn } from '@/lib/utils';
+import { useAnimateIconContext } from '@/components/ui/animate-icon';
 
 export interface SettingsIconHandle {
   startAnimation: () => void;
@@ -19,6 +20,18 @@ const SettingsIcon = forwardRef<SettingsIconHandle, SettingsIconProps>(
   ({ onMouseEnter, onMouseLeave, className, size = 28, ...props }, ref) => {
     const controls = useAnimation();
     const isControlledRef = useRef(false);
+    const context = useAnimateIconContext();
+
+    // Animate based on parent AnimateIcon context
+    useEffect(() => {
+      if (context) {
+        if (context.active) {
+          controls.start('animate');
+        } else {
+          controls.start('normal');
+        }
+      }
+    }, [context, context?.active, controls]);
 
     useImperativeHandle(ref, () => {
       isControlledRef.current = true;
