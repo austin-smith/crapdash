@@ -116,7 +116,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
       </Field>
 
       <Field>
-        <FieldLabel>Icon (Optional)</FieldLabel>
+        <FieldLabel>Icon</FieldLabel>
         <IconUpload
           serviceId={service?.id}
           value={icon}

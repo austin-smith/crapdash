@@ -15,7 +15,6 @@ export async function createCategory(data: CategoryFormData): Promise<ActionResu
     const newCategory: Category = {
       id: crypto.randomUUID(),
       ...validated,
-      createdAt: new Date().toISOString(),
     };
 
     config.categories.push(newCategory);
@@ -132,7 +131,6 @@ export async function createService(data: ServiceFormData): Promise<ActionResult
     const newService: Service = {
       id: crypto.randomUUID(),
       ...validated,
-      createdAt: new Date().toISOString(),
     };
 
     config.services.push(newService);

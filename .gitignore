@@ -46,6 +46,7 @@ Icon?
 # VS Code
 .vscode
 
-# uploaded icons (but keep .gitkeep)
+# Config & icons
+/data/config.json
 /data/icons/*
 !/data/icons/.gitkeep

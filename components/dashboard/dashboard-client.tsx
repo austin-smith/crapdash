@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { SettingsIcon } from '@/components/ui/settings';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,19 @@ interface DashboardClientProps {
 
 export function DashboardClient({ categories, services }: DashboardClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -48,15 +61,15 @@ export function DashboardClient({ categories, services }: DashboardClientProps) 
     <>
       <PageHeader
         title="Crapdash"
-        description="Dashboard for u"
+        // description="Dashboard for u"
         >
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" size="icon-lg" asChild>
               <Link href="/admin">
-                <SettingsIcon size={14} />
+                <SettingsIcon size={18} />
               </Link>
             </Button>
           </TooltipTrigger>

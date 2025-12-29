@@ -22,8 +22,8 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon" disabled>
-        <span className="h-[14px] w-[14px]" />
+      <Button variant="outline" size="icon-lg" disabled>
+        <span className="h-[18px] w-[18px]" />
       </Button>
     );
   }
@@ -33,8 +33,8 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          {isDark ? <Moon size={14} /> : <Sun size={14} />}
+        <Button variant="outline" size="icon-lg">
+          {isDark ? <Moon size={18} /> : <Sun size={18} />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

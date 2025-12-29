@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
+import { Field, FieldLabel, FieldError } from '@/components/ui/field';
 import { createCategory, updateCategory } from '@/lib/actions';
 import type { Category } from '@/lib/types';
 
@@ -16,7 +15,6 @@ interface CategoryFormProps {
 
 export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProps) {
   const [name, setName] = useState(category?.name || '');
-  const [description, setDescription] = useState(category?.description || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,14 +23,13 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     setIsSubmitting(true);
     setErrors({});
 
-    const data = { name, description: description || undefined };
+    const data = { name };
     const result = category
       ? await updateCategory(category.id, data)
       : await createCategory(data);
 
     if (result.success) {
       setName('');
-      setDescription('');
       onSuccess?.();
     } else {
       const errorMap: Record<string, string> = {};
@@ -56,19 +53,6 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
           disabled={isSubmitting}
         />
         {errors.name && <FieldError>{errors.name}</FieldError>}
-      </Field>
-
-      <Field data-invalid={!!errors.description}>
-        <FieldLabel>Description</FieldLabel>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter category description (optional)"
-          rows={3}
-          disabled={isSubmitting}
-        />
-        <FieldDescription>Optional description for the category</FieldDescription>
-        {errors.description && <FieldError>{errors.description}</FieldError>}
       </Field>
 
       {errors.general && (

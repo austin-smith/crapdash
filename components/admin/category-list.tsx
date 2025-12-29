@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -60,12 +60,7 @@ export function CategoryList({ categories, services, onEdit, onDeleted }: Catego
             <Card key={category.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{category.name}</CardTitle>
-                    {category.description && (
-                      <CardDescription className="mt-1">{category.description}</CardDescription>
-                    )}
-                  </div>
+                  <CardTitle className="text-lg">{category.name}</CardTitle>
                   <Badge variant="secondary">{serviceCount} services</Badge>
                 </div>
               </CardHeader>

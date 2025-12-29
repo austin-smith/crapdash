@@ -1,72 +1,230 @@
 {
   "categories": [
-    {
-      "id": "monitoring",
-      "name": "Monitoring",
-      "description": "System monitoring and observability tools",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "media",
-      "name": "Media",
-      "description": "Media streaming and management services",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "network",
-      "name": "Network",
-      "description": "Network infrastructure and management",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    }
+      {
+          "id": "plex",
+          "name": "Plex"
+      },
+      {
+          "id": "infrastructure",
+          "name": "Infrastructure"
+      },
+      {
+          "id": "dev-create",
+          "name": "Dev & Create"
+      },
+      {
+          "id": "smart-home",
+          "name": "Smart Home"
+      }
   ],
   "services": [
-    {
-      "id": "grafana",
-      "name": "Grafana",
-      "description": "Analytics and monitor",
-      "url": "http://localhost:3000",
-      "categoryId": "monitoring",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "prometheus",
-      "name": "Prometheus",
-      "description": "Time series database and monitoring system",
-      "url": "http://localhost:9090",
-      "categoryId": "monitoring",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "plex",
-      "name": "Plex",
-      "description": "Media server for streaming your content",
-      "url": "http://localhost:32400",
-      "categoryId": "media",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "jellyfin",
-      "name": "Jellyfin",
-      "description": "Free media server alternative",
-      "url": "http://localhost:8096",
-      "categoryId": "media",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "pfsense",
-      "name": "pfSense",
-      "description": "Firewall and router platform",
-      "url": "https://192.168.1.1",
-      "categoryId": "network",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    },
-    {
-      "id": "pihole",
-      "name": "Pi-hole",
-      "description": "Network-wide ad blocking",
-      "url": "http://192.168.1.2/admin",
-      "categoryId": "network",
-      "createdAt": "2025-12-28T00:00:00.000Z"
-    }
+      {
+          "id": "plex",
+          "name": "Plex",
+          "description": "Client–server media player system and software suite.",
+          "url": "https://plex.crapshack.net/",
+          "categoryId": "plex",
+          "icon": "/icons/plex.png"
+      },
+      {
+          "id": "tautulli",
+          "name": "Tautulli",
+          "description": "Monitoring and tracking tool for Plex.",
+          "url": "http://smittypc:8181",
+          "categoryId": "plex",
+          "icon": "/icons/tautulli.png"
+      },
+      {
+          "id": "ombi",
+          "name": "Ombi",
+          "description": "Want a Movie or TV Show on Plex? Use Ombi!",
+          "url": "https://ombi.crapshack.net",
+          "categoryId": "plex",
+          "icon": "/icons/ombi.png"
+      },
+      {
+          "id": "sonarr",
+          "name": "Sonarr",
+          "description": "Smart PVR for newsgroup and bittorrent users.",
+          "url": "http://smittypc:8989",
+          "categoryId": "plex",
+          "icon": "/icons/sonarr.png"
+      },
+      {
+          "id": "radarr",
+          "name": "Radarr",
+          "description": "Fork of Sonarr to work with movies.",
+          "url": "http://smittypc:7878",
+          "categoryId": "plex",
+          "icon": "/icons/radarr.png"
+      },
+      {
+          "id": "bazarr",
+          "name": "Bazarr",
+          "description": "Companion application to Sonarr and Radarr for subtitles.",
+          "url": "http://smittypc:6767",
+          "categoryId": "plex",
+          "icon": "/icons/bazarr.png"
+      },
+      {
+          "id": "transmission",
+          "name": "Transmission",
+          "description": "Fast, easy, and free BitTorrent client.",
+          "url": "http://smittypc:9091",
+          "categoryId": "plex",
+          "icon": "/icons/transmission.png"
+      },
+      {
+          "id": "jackett",
+          "name": "Jackett",
+          "description": "Indexer for your favorite torrent trackers.",
+          "url": "http://smittypc:9117",
+          "categoryId": "plex",
+          "icon": "/icons/jackett.png"
+      },
+      {
+          "id": "prowlarr",
+          "name": "Prowlarr",
+          "description": "Indexer manager/proxy to integrate with your various PVR apps, supporting management of both Torrent Trackers and Usenet Indexers.",
+          "url": "http://smittypc:9696",
+          "categoryId": "plex",
+          "icon": "/icons/prowlarr.png"
+      },
+      {
+          "id": "unifi-controller",
+          "name": "Unifi Controller",
+          "description": "Network management software solution from Ubiquiti Networks.",
+          "url": "https://192.168.1.1",
+          "categoryId": "infrastructure",
+          "icon": "/icons/ubiquiti.png"
+      },
+      {
+          "id": "maximus",
+          "name": "Maximus",
+          "description": "File sharing, centralized backup, RAID storage, multimedia streaming, virtual storage.",
+          "url": "http://maximus:5000",
+          "categoryId": "infrastructure",
+          "icon": "/icons/maximus.png"
+      },
+      {
+          "id": "maxima",
+          "name": "Maxima",
+          "description": "File sharing, centralized backup, RAID storage, multimedia streaming, virtual storage.",
+          "url": "http://maxima:5000",
+          "categoryId": "infrastructure",
+          "icon": "/icons/maximus.png"
+      },
+      {
+          "id": "pihole",
+          "name": "Pi-hole",
+          "description": "Network-wide protection.",
+          "url": "http://raspberrypi/admin/",
+          "categoryId": "infrastructure",
+          "icon": "/icons/pi-hole.png"
+      },
+      {
+          "id": "portainer-smittypc",
+          "name": "Portainer (smittypc)",
+          "description": "Making Docker management easy.",
+          "url": "http://smittypc:9000",
+          "categoryId": "infrastructure",
+          "icon": "/icons/portainer.png"
+      },
+      {
+          "id": "duck-dns",
+          "name": "Duck DNS",
+          "description": "Free dynamic DNS hosted on Amazon VPC.",
+          "url": "https://www.duckdns.org",
+          "categoryId": "infrastructure",
+          "icon": "/icons/duck-dns.png"
+      },
+      {
+          "id": "crapshack",
+          "name": "Crapshack",
+          "description": "a dead dream",
+          "url": "https://crapshack.net",
+          "categoryId": "dev-create",
+          "icon": "/icons/crapshack.png"
+      },
+      {
+          "id": "digitalocean",
+          "name": "DigitalOcean",
+          "description": "Cloud infrastructure for developers.",
+          "url": "https://cloud.digitalocean.com/projects/89584a80-3a48-4d87-8921-053b7a13bd6a",
+          "categoryId": "dev-create",
+          "icon": "/icons/digitalocean.png"
+      },
+      {
+          "id": "railway",
+          "name": "Railway",
+          "description": "Cloud infrastructure for developers.",
+          "url": "https://railway.com/project/7d3a35a7-99cc-49e0-8171-db88453968d8",
+          "categoryId": "dev-create",
+          "icon": "/icons/railway.png"
+      },
+      {
+          "id": "cloudflare",
+          "name": "Cloudflare",
+          "description": "Connect, protect, and build everywhere.",
+          "url": "https://dash.cloudflare.com/8f8447fe22ec230a5783ee7ecc5bc0d3/crapshack.net",
+          "categoryId": "dev-create",
+          "icon": "/icons/cloudflare.svg"
+      },
+      {
+          "id": "github-crapshack-net",
+          "name": "GitHub [crapshack.net]",
+          "description": "Build and ship software on a single, collaborative platform.",
+          "url": "https://github.com/crapshack/crapshack.net",
+          "categoryId": "dev-create",
+          "icon": "/icons/github.png"
+      },
+      {
+          "id": "invokeai",
+          "name": "InvokeAI",
+          "description": "A version of Stable Diffusion that features a slick WebGUI, an interactive command-line script that combines text2img and img2img functionality in a 'dream bot' style interface, and multiple features and other enhancements.",
+          "url": "http://smittypc:9090",
+          "categoryId": "dev-create",
+          "icon": "/icons/invokeai.png"
+      },
+      {
+          "id": "crapshack-dev",
+          "name": "Crapshack [dev]",
+          "description": "a dev dream",
+          "url": "http://dev.crapshack.net",
+          "categoryId": "dev-create",
+          "icon": "/icons/crapshack-dev.png"
+      },
+      {
+          "id": "home-assistant",
+          "name": "Home Assistant",
+          "description": "Open source home automation that puts local control and privacy first.",
+          "url": "http://homeassistant:8123",
+          "categoryId": "smart-home",
+          "icon": "/icons/home-assistant.png"
+      },
+      {
+          "id": "piko",
+          "name": "Piko",
+          "description": "Cross-platform IP video management system (VMS) designed to discover, view, record, and manage IP video cameras so you can monitor, analyze and react to critical events in real time.",
+          "url": "https://smittypc:7001",
+          "categoryId": "smart-home",
+          "icon": "/icons/piko.png"
+      },
+      {
+          "id": "scrypted",
+          "name": "Scrypted",
+          "description": "Home automation platform powered by node.js.",
+          "url": "https://smittypc:10443/",
+          "categoryId": "smart-home",
+          "icon": "/icons/scrypted.png"
+      },
+      {
+          "id": "yamaha-receiver",
+          "name": "Yamaha Receiver",
+          "description": "It's wireless streaming audio. It's wireless multiroom audio. It's wireless stereo. It's wireless surround sound.",
+          "url": "http://192.168.1.132",
+          "categoryId": "smart-home",
+          "icon": "/icons/yamaha.png"
+      }
   ]
 }

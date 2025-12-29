@@ -4,13 +4,19 @@ import type { Category, Service, DashboardConfig } from './types';
 
 const CONFIG_PATH = path.join(process.cwd(), 'data', 'config.json');
 
+const DEFAULT_CONFIG: DashboardConfig = {
+  categories: [],
+  services: [],
+};
+
 export async function readConfig(): Promise<DashboardConfig> {
   try {
     const data = await fs.readFile(CONFIG_PATH, 'utf-8');
     return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading config:', error);
-    throw new Error('Failed to read configuration');
+  } catch {
+    // File doesn't exist, create default
+    await writeConfig(DEFAULT_CONFIG);
+    return DEFAULT_CONFIG;
   }
 }
 

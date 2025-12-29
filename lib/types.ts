@@ -1,8 +1,6 @@
 export interface Category {
   id: string;
   name: string;
-  description?: string;
-  createdAt: string;
 }
 
 export interface Service {
@@ -12,7 +10,6 @@ export interface Service {
   url: string;
   categoryId: string;
   icon?: string;
-  createdAt: string;
 }
 
 export interface DashboardConfig {
@@ -20,8 +17,8 @@ export interface DashboardConfig {
   services: Service[];
 }
 
-export type CategoryFormData = Omit<Category, 'id' | 'createdAt'>;
-export type ServiceFormData = Omit<Service, 'id' | 'createdAt'>;
+export type CategoryFormData = Omit<Category, 'id'>;
+export type ServiceFormData = Omit<Service, 'id'>;
 
 export interface ValidationError {
   field: string;
