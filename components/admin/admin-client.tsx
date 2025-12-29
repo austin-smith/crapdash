@@ -89,7 +89,6 @@ export function AdminClient({ categories: initialCategories, services: initialSe
     <>
       <PageHeader
         title="Crapdash Admin"
-        description="Manage categories and services"
       >
         <ThemeToggle />
         <Tooltip>

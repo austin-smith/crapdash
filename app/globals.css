@@ -80,6 +80,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --title-gradient-from: oklch(0.8454 0.0799 356.87);
+  --title-gradient-to: oklch(0.9007 0.0544 354.91);
 }
 
 .dark {
@@ -114,6 +116,8 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --title-gradient-from: oklch(0.8454 0.0799 356.87);
+  --title-gradient-to: oklch(0.9007 0.0544 354.91);
 }
 
 @layer base {
@@ -122,5 +126,14 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-gradient-title {
+    background-image: linear-gradient(to right, var(--title-gradient-from), var(--title-gradient-to));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
   }
 }

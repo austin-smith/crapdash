@@ -65,7 +65,6 @@ export function DashboardClient({ categories, services }: DashboardClientProps) 
     <>
       <PageHeader
         title="Crapdash"
-        // description="Dashboard for u"
         >
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <LayoutToggle layout={layout} onLayoutChange={setLayout} mounted={mounted} />

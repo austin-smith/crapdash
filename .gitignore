@@ -47,6 +47,6 @@ Icon?
 .vscode
 
 # Config & icons
-/data/config.json
+#/data/config.json
 /data/icons/*
 !/data/icons/.gitkeep
