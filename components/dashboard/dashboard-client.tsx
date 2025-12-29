@@ -8,7 +8,10 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/layout/page-header';
 import { CategorySection } from './category-section';
+import { CategoryColumn } from './category-column';
 import { SearchBar } from './search-bar';
+import { LayoutToggle } from './layout-toggle';
+import { useLayout } from '@/hooks/use-layout';
 import type { Category, Service } from '@/lib/types';
 
 interface DashboardClientProps {
@@ -19,6 +22,7 @@ interface DashboardClientProps {
 export function DashboardClient({ categories, services }: DashboardClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { layout, setLayout, mounted } = useLayout();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -64,6 +68,7 @@ export function DashboardClient({ categories, services }: DashboardClientProps) 
         // description="Dashboard for u"
         >
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
+        <LayoutToggle layout={layout} onLayoutChange={setLayout} mounted={mounted} />
         <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
@@ -79,25 +84,40 @@ export function DashboardClient({ categories, services }: DashboardClientProps) 
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
         {filteredData.categories.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No services found matching your search.</p>
-        </div>
-      ) : (
-        <div>
-          {filteredData.categories.map((category) => {
-            const categoryServices = filteredData.services.filter(
-              (s) => s.categoryId === category.id
-            );
-            return (
-              <CategorySection
-                key={category.id}
-                category={category}
-                services={categoryServices}
-              />
-            );
-          })}
-        </div>
-      )}
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No services found matching your search.</p>
+          </div>
+        ) : layout === 'rows' ? (
+          <div>
+            {filteredData.categories.map((category) => {
+              const categoryServices = filteredData.services.filter(
+                (s) => s.categoryId === category.id
+              );
+              return (
+                <CategorySection
+                  key={category.id}
+                  category={category}
+                  services={categoryServices}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredData.categories.map((category) => {
+              const categoryServices = filteredData.services.filter(
+                (s) => s.categoryId === category.id
+              );
+              return (
+                <CategoryColumn
+                  key={category.id}
+                  category={category}
+                  services={categoryServices}
+                />
+              );
+            })}
+          </div>
+        )}
       </main>
     </>
   );

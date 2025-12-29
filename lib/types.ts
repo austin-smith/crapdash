@@ -1,3 +1,5 @@
+export type DashboardLayout = 'rows' | 'columns';
+
 export interface Category {
   id: string;
   name: string;
