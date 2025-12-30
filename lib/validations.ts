@@ -11,6 +11,7 @@ export const serviceSchema = z.object({
   url: z.string().url('Must be a valid URL'),
   categoryId: z.string().min(1, 'Category is required'),
   icon: z.string().optional(),
+  active: z.boolean(),
 });
 
 export type CategoryInput = z.infer<typeof categorySchema>;

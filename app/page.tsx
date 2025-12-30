@@ -1,12 +1,12 @@
 import { cookies } from 'next/headers';
-import { getCategories, getServices } from '@/lib/db';
+import { getCategories, getActiveServices } from '@/lib/db';
 import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { LAYOUT_COOKIE_NAME, DEFAULT_LAYOUT, type DashboardLayout } from '@/lib/types';
 
 export default async function Page() {
   const [categories, services, cookieStore] = await Promise.all([
     getCategories(),
-    getServices(),
+    getActiveServices(),
     cookies(),
   ]);
 

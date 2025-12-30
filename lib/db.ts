@@ -46,6 +46,11 @@ export async function getServices(): Promise<Service[]> {
   return config.services;
 }
 
+export async function getActiveServices(): Promise<Service[]> {
+  const services = await getServices();
+  return services.filter(service => service.active);
+}
+
 export async function getServicesByCategoryId(categoryId: string): Promise<Service[]> {
   const services = await getServices();
   return services.filter(service => service.categoryId === categoryId);

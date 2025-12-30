@@ -116,7 +116,7 @@ export async function deleteCategory(id: string): Promise<ActionResult<void>> {
 
 export async function createService(data: ServiceFormData): Promise<ActionResult<Service>> {
   try {
-    const validated = serviceSchema.parse(data);
+    const validated = serviceSchema.parse({ ...data, active: data.active ?? true });
     const config = await readConfig();
 
     // Validate category exists
@@ -226,6 +226,38 @@ export async function deleteService(id: string): Promise<ActionResult<void>> {
     return {
       success: false,
       errors: [{ field: 'general', message: 'Failed to delete service' }],
+    };
+  }
+}
+
+export async function toggleServiceActive(id: string): Promise<ActionResult<Service>> {
+  try {
+    const config = await readConfig();
+
+    const index = config.services.findIndex(svc => svc.id === id);
+    if (index === -1) {
+      return {
+        success: false,
+        errors: [{ field: 'general', message: 'Service not found' }],
+      };
+    }
+
+    const updatedService: Service = {
+      ...config.services[index],
+      active: !config.services[index].active,
+    };
+
+    config.services[index] = updatedService;
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: updatedService };
+  } catch {
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to toggle service status' }],
     };
   }
 }

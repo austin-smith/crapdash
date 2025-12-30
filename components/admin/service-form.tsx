@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -29,6 +31,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
   const [url, setUrl] = useState(service?.url || '');
   const [categoryId, setCategoryId] = useState(service?.categoryId || '');
   const [icon, setIcon] = useState(service?.icon || '');
+  const [active, setActive] = useState(service?.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,7 +40,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
     setIsSubmitting(true);
     setErrors({});
 
-    const data = { name, description, url, categoryId, icon: icon || undefined };
+    const data = { name, description, url, categoryId, icon: icon || undefined, active };
     const result = service
       ? await updateService(service.id, data)
       : await createService(data);
@@ -48,6 +51,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
       setUrl('');
       setCategoryId('');
       setIcon('');
+      setActive(true);
       onSuccess?.();
     } else {
       const errorMap: Record<string, string> = {};
@@ -125,6 +129,21 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
         />
         <FieldDescription>Upload a custom icon for this service</FieldDescription>
       </Field>
+
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="space-y-0.5">
+          <Label htmlFor="active">Active</Label>
+          <p className="text-sm text-muted-foreground">
+            Inactive services are hidden on the dashboard
+          </p>
+        </div>
+        <Switch
+          id="active"
+          checked={active}
+          onCheckedChange={setActive}
+          disabled={isSubmitting}
+        />
+      </div>
 
       {errors.general && (
         <div className="text-sm text-destructive">{errors.general}</div>

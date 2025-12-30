@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CornerRibbon } from '@/components/ui/corner-ribbon';
 import { Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { ServiceIcon } from '@/components/ui/service-icon';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
 import type { Category, Service } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface ServiceListProps {
   services: Service[];
@@ -51,10 +53,15 @@ export function ServiceList({ services, categories, onEdit, onDeleted }: Service
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {services.map((service) => (
-          <Card key={service.id}>
-            <CardHeader>
-              <div className="flex items-start gap-3">
-                <ServiceIcon service={service} size="md" />
+          <Card key={service.id} className="relative overflow-hidden flex flex-col">
+            {!service.active && (
+              <CornerRibbon className="bg-amber-500 text-white">
+                Inactive
+              </CornerRibbon>
+            )}
+            <CardHeader className="flex-1">
+              <div className={cn('flex items-start gap-3', !service.active && 'opacity-60')}>
+                <ServiceIcon service={service} size="md" className={cn(!service.active && 'grayscale')} />
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <span className="truncate">{service.name}</span>

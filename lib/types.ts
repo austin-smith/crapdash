@@ -16,6 +16,7 @@ export interface Service {
   url: string;
   categoryId: string;
   icon?: string;
+  active: boolean;
 }
 
 export interface DashboardConfig {
