@@ -261,3 +261,77 @@ export async function toggleServiceActive(id: string): Promise<ActionResult<Serv
     };
   }
 }
+
+export async function reorderCategories(orderedIds: string[]): Promise<ActionResult<void>> {
+  try {
+    const config = await readConfig();
+
+    // Validate all IDs exist
+    const existingIds = new Set(config.categories.map(c => c.id));
+    for (const id of orderedIds) {
+      if (!existingIds.has(id)) {
+        return {
+          success: false,
+          errors: [{ field: 'general', message: `Category with id "${id}" not found` }],
+        };
+      }
+    }
+
+    // Create a map for quick lookup
+    const categoryMap = new Map(config.categories.map(c => [c.id, c]));
+
+    // Rebuild categories array in new order
+    config.categories = orderedIds.map(id => categoryMap.get(id)!);
+
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: undefined };
+  } catch {
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to reorder categories' }],
+    };
+  }
+}
+
+export async function reorderServices(categoryId: string, orderedIds: string[]): Promise<ActionResult<void>> {
+  try {
+    const config = await readConfig();
+
+    // Get services in this category
+    const servicesInCategory = config.services.filter(s => s.categoryId === categoryId);
+    const serviceMap = new Map(servicesInCategory.map(s => [s.id, s]));
+    const reorderedCategoryServices = orderedIds.map(id => serviceMap.get(id)!);
+    
+    // Rebuild full services array, replacing this category's services in new order
+    const newServices: Service[] = [];
+    let inserted = false;
+    
+    for (const service of config.services) {
+      if (service.categoryId === categoryId) {
+        if (!inserted) {
+          newServices.push(...reorderedCategoryServices);
+          inserted = true;
+        }
+      } else {
+        newServices.push(service);
+      }
+    }
+
+    config.services = newServices;
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: undefined };
+  } catch {
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to reorder services' }],
+    };
+  }
+}

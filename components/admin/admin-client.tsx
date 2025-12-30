@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
@@ -11,12 +12,14 @@ import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { SearchBar } from '@/components/dashboard/search-bar';
-import { CategoryList } from '@/components/admin/category-list';
-import { ServiceList } from '@/components/admin/service-list';
 import { CategoryFormModal } from '@/components/admin/category-form-modal';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import type { Category, Service } from '@/lib/types';
+
+// Dynamic imports to avoid SSR for drag-and-drop components
+const CategoryList = dynamic(() => import('@/components/admin/category-list').then(m => m.CategoryList), { ssr: false });
+const ServiceList = dynamic(() => import('@/components/admin/service-list').then(m => m.ServiceList), { ssr: false });
 
 interface AdminClientProps {
   categories: Category[];
