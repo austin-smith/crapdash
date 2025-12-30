@@ -21,10 +21,10 @@ export function ServiceCard({ service }: ServiceCardProps) {
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg line-clamp-1">{service.name}</CardTitle>
               <div className="relative mt-1 h-4 overflow-hidden">
-                <CardDescription className="line-clamp-1 transition-transform duration-300 ease-out group-hover:-translate-y-full">
+                <CardDescription className="line-clamp-1 transition-transform duration-500 ease-out group-hover:-translate-y-full">
                   {service.description}
                 </CardDescription>
-                <p className="absolute inset-0 font-mono text-[11px] text-muted-foreground truncate translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">
+                <p className="absolute inset-0 font-mono text-[11px] text-muted-foreground truncate translate-y-full transition-transform duration-500 ease-out group-hover:translate-y-0">
                   {service.url}
                 </p>
               </div>
