@@ -1,11 +1,69 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { ZodError } from 'zod';
 import { readConfig, writeConfig } from './db';
 import { categorySchema, serviceSchema } from './validations';
-import { deleteServiceIcon } from './file-utils';
-import type { Category, Service, ActionResult, CategoryFormData, ServiceFormData } from './types';
+import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
+import type { Category, Service, ActionResult, CategoryFormData, ServiceFormData, ServiceCreateData } from './types';
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/svg+xml',
+  'image/webp',
+  'image/gif',
+];
+
+export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
+  try {
+    const file = formData.get('file') as File;
+    const serviceId = formData.get('serviceId') as string;
+
+    if (!file) {
+      return { success: false, errors: [{ field: 'icon', message: 'No file provided' }] };
+    }
+
+    if (!serviceId) {
+      return { success: false, errors: [{ field: 'icon', message: 'No service ID provided' }] };
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { success: false, errors: [{ field: 'icon', message: 'Invalid file type. Only PNG, JPG, SVG, WebP, and GIF are allowed.' }] };
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return { success: false, errors: [{ field: 'icon', message: 'File too large. Maximum size is 2MB.' }] };
+    }
+
+    const ext = path.extname(file.name).toLowerCase();
+    if (!isValidImageExtension(file.name)) {
+      return { success: false, errors: [{ field: 'icon', message: 'Invalid file extension.' }] };
+    }
+
+    // Delete old icon if exists
+    await deleteServiceIcon(serviceId);
+
+    // Save new file
+    const filename = `${serviceId}${ext}`;
+    const filePath = getIconFilePath(filename);
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await fs.writeFile(filePath, buffer);
+
+    const iconPath = `/icons/${filename}`;
+
+    return { success: true, data: iconPath };
+  } catch (error) {
+    console.error('Upload error:', error);
+    return { success: false, errors: [{ field: 'icon', message: 'Failed to upload file' }] };
+  }
+}
 
 export async function createCategory(data: CategoryFormData): Promise<ActionResult<Category>> {
   try {
@@ -114,7 +172,7 @@ export async function deleteCategory(id: string): Promise<ActionResult<void>> {
   }
 }
 
-export async function createService(data: ServiceFormData): Promise<ActionResult<Service>> {
+export async function createService(data: ServiceCreateData): Promise<ActionResult<Service>> {
   try {
     const validated = serviceSchema.parse({ ...data, active: data.active ?? true });
     const config = await readConfig();
@@ -128,8 +186,17 @@ export async function createService(data: ServiceFormData): Promise<ActionResult
       };
     }
 
+    // Check for duplicate ID
+    const idExists = config.services.some(s => s.id === data.id);
+    if (idExists) {
+      return {
+        success: false,
+        errors: [{ field: 'name', message: 'A service with this name already exists' }],
+      };
+    }
+
     const newService: Service = {
-      id: crypto.randomUUID(),
+      id: data.id,
       ...validated,
     };
 

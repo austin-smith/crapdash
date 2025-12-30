@@ -117,7 +117,7 @@ export function ServiceList({ services, categories, onEdit, onDeleted }: Service
   const renderServiceCard = (service: Service, isOverlay = false) => {
     return (
       <Card className={cn(
-        'relative overflow-hidden flex flex-col',
+        'relative overflow-hidden flex flex-col h-full',
         isOverlay && 'shadow-lg ring-2 ring-primary/20'
       )}>
         {!service.active && (
@@ -204,7 +204,7 @@ export function ServiceList({ services, categories, onEdit, onDeleted }: Service
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {categoryServices.map((service) => (
-                    <SortableItem key={service.id} id={service.id}>
+                    <SortableItem key={service.id} id={service.id} className="h-full">
                       {renderServiceCard(service)}
                     </SortableItem>
                   ))}

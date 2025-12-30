@@ -15,7 +15,9 @@ import {
 } from '@/components/ui/select';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
 import { IconUpload } from './icon-upload';
-import { createService, updateService } from '@/lib/actions';
+import { CategoryIcon } from '@/components/ui/category-icon';
+import { createService, updateService, uploadServiceIcon } from '@/lib/actions';
+import { slugify } from '@/lib/utils';
 import type { Category, Service } from '@/lib/types';
 
 interface ServiceFormProps {
@@ -31,19 +33,47 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
   const [url, setUrl] = useState(service?.url || '');
   const [categoryId, setCategoryId] = useState(service?.categoryId || '');
   const [icon, setIcon] = useState(service?.icon || '');
+  const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
   const [active, setActive] = useState(service?.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Generate slug from name for new services
+  const serviceId = service?.id || slugify(name);
+
+  const uploadIcon = async (file: File, id: string): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('serviceId', id);
+
+    const result = await uploadServiceIcon(formData);
+    return result.success ? result.data : null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
 
-    const data = { name, description, url, categoryId, icon: icon || undefined, active };
+    const id = service?.id || serviceId;
+    let iconPath = icon || undefined;
+
+    // Upload pending icon file if exists
+    if (pendingIconFile) {
+      const uploadedPath = await uploadIcon(pendingIconFile, id);
+      if (uploadedPath) {
+        iconPath = uploadedPath;
+      } else {
+        setErrors({ icon: 'Failed to upload icon' });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const formData = { name, description, url, categoryId, icon: iconPath, active };
     const result = service
-      ? await updateService(service.id, data)
-      : await createService(data);
+      ? await updateService(service.id, formData)
+      : await createService({ id: serviceId, ...formData });
 
     if (result.success) {
       setName('');
@@ -51,6 +81,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
       setUrl('');
       setCategoryId('');
       setIcon('');
+      setPendingIconFile(null);
       setActive(true);
       onSuccess?.();
     } else {
@@ -74,6 +105,9 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
           placeholder="Enter service name"
           disabled={isSubmitting}
         />
+        {!service && serviceId && (
+          <FieldDescription>Slug: {serviceId}</FieldDescription>
+        )}
         {errors.name && <FieldError>{errors.name}</FieldError>}
       </Field>
 
@@ -94,11 +128,11 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com or http://192.168.1.1"
+          placeholder="https://example.com, http://192.168.1.1:8080"
           type="url"
           disabled={isSubmitting}
         />
-        <FieldDescription>Full URL including http:// or https://</FieldDescription>
+        <FieldDescription>Full URL including https:// or http://</FieldDescription>
         {errors.url && <FieldError>{errors.url}</FieldError>}
       </Field>
 
@@ -109,9 +143,12 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map((category) => (
+            {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
               <SelectItem key={category.id} value={category.id}>
-                {category.name}
+                <span className="flex items-center gap-2">
+                  <CategoryIcon name={category.icon} className="size-4" />
+                  {category.name}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -122,10 +159,13 @@ export function ServiceForm({ service, categories, onSuccess, onCancel }: Servic
       <Field>
         <FieldLabel>Icon</FieldLabel>
         <IconUpload
-          serviceId={service?.id}
           value={icon}
-          onUpload={(iconPath) => setIcon(iconPath)}
-          onClear={() => setIcon('')}
+          pendingFile={pendingIconFile}
+          onFileSelect={(file) => setPendingIconFile(file)}
+          onClear={() => {
+            setIcon('');
+            setPendingIconFile(null);
+          }}
         />
         <FieldDescription>Upload a custom icon for this service</FieldDescription>
       </Field>

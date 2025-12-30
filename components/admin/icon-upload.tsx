@@ -1,26 +1,32 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
 interface IconUploadProps {
-  serviceId?: string;
   value?: string;
-  onUpload: (iconPath: string) => void;
+  pendingFile?: File | null;
+  onFileSelect: (file: File | null) => void;
   onClear: () => void;
 }
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
-export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+export function IconUpload({ value, pendingFile, onFileSelect, onClear }: IconUploadProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Create preview URL for pending file
+  const preview = useMemo(() => {
+    if (pendingFile) {
+      return URL.createObjectURL(pendingFile);
+    }
+    return null;
+  }, [pendingFile]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -39,56 +45,17 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
       return;
     }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    onFileSelect(file);
 
-    // Upload file
-    if (!serviceId) {
-      setError('Service ID is required for upload.');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('serviceId', serviceId);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        onUpload(result.iconPath);
-        setPreview(null);
-      } else {
-        setError(result.error || 'Failed to upload file');
-        setPreview(null);
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError('Failed to upload file');
-      setPreview(null);
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleClear = () => {
-    setPreview(null);
     setError(null);
+    onFileSelect(null);
     onClear();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -125,10 +92,9 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading || !serviceId}
             >
               <Upload className="w-4 h-4" />
-              {isUploading ? 'Uploading...' : currentIcon ? 'Change Icon' : 'Upload Icon'}
+              {currentIcon ? 'Change Icon' : 'Upload Icon'}
             </Button>
 
             {currentIcon && (
@@ -137,7 +103,6 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
                 variant="outline"
                 size="sm"
                 onClick={handleClear}
-                disabled={isUploading}
               >
                 <X className="w-4 h-4" />
                 Remove
@@ -148,12 +113,6 @@ export function IconUpload({ serviceId, value, onUpload, onClear }: IconUploadPr
           <p className="text-xs text-muted-foreground">
             PNG, JPG, SVG, WebP, or GIF (max 2MB)
           </p>
-
-          {!serviceId && (
-            <p className="text-xs text-muted-foreground">
-              Save the service first to upload an icon
-            </p>
-          )}
         </div>
       </div>
 

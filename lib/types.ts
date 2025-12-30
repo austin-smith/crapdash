@@ -26,6 +26,7 @@ export interface DashboardConfig {
 
 export type CategoryFormData = Omit<Category, 'id'>;
 export type ServiceFormData = Omit<Service, 'id'>;
+export type ServiceCreateData = Service;
 
 export interface ValidationError {
   field: string;
