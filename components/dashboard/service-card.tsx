@@ -21,14 +21,18 @@ export function ServiceCard({ service, cacheKey }: ServiceCardProps) {
             <ServiceIcon service={service} size="md" cacheKey={cacheKey} />
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg line-clamp-1">{service.name}</CardTitle>
-              <CardDescription className="line-clamp-1 group-hover:line-clamp-3 group-data-[state=open]/context:line-clamp-3 overflow-hidden max-h-[1.5em] group-hover:max-h-[4.5em] group-data-[state=open]/context:max-h-[4.5em] transition-[max-height] duration-350 delay-150">
-                {service.description}
-              </CardDescription>
+              <div className="grid grid-rows-[1fr] group-hover:grid-rows-[3fr] group-data-[state=open]/context:grid-rows-[3fr] transition-[grid-template-rows] duration-300 ease-out">
+                <CardDescription className="line-clamp-1 group-hover:line-clamp-3 group-data-[state=open]/context:line-clamp-3 overflow-hidden min-h-0">
+                  {service.description}
+                </CardDescription>
+              </div>
             </div>
           </div>
-          <div className="overflow-hidden transition-[max-height,opacity,padding] duration-350 delay-150 max-h-0 opacity-0 pt-0 group-hover:max-h-24 group-hover:opacity-100 group-hover:pt-2 group-data-[state=open]/context:max-h-24 group-data-[state=open]/context:opacity-100 group-data-[state=open]/context:pt-2">
-            <div className="max-w-full rounded-md bg-muted/70 px-2 py-1 text-[11px] font-mono text-muted-foreground shadow-sm break-words leading-snug">
-              {service.url}
+          <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] group-data-[state=open]/context:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+            <div className="overflow-hidden min-h-0">
+              <div className="mt-2 max-w-full rounded-md bg-muted/70 px-2 py-1 text-[11px] font-mono text-muted-foreground shadow-sm break-words leading-snug">
+                {service.url}
+              </div>
             </div>
           </div>
         </CardHeader>
