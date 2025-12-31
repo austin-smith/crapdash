@@ -140,8 +140,13 @@ export function CategoryList({ categories, services, onEdit, onDeleted }: Catego
         )}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {localCategories.map((category) => (
-            <SortableItem key={category.id} id={category.id}>
+          {localCategories.map((category, index) => (
+            <SortableItem 
+              key={category.id} 
+              id={category.id}
+              className="animate-card-in"
+              style={{ '--index': index } as React.CSSProperties}
+            >
               {renderCategoryCard(category)}
             </SortableItem>
           ))}

@@ -37,13 +37,14 @@ export function CategoryLayout({ category, services, layout, onEditService, onDe
             : 'flex flex-col gap-3'
         }
       >
-        {services.map((service) => (
+        {services.map((service, index) => (
           <ServiceCardContext
             key={service.id}
             service={service}
             onEdit={onEditService}
             onDelete={onDeleteService}
             cacheKey={cacheKey}
+            index={index}
           />
         ))}
       </div>

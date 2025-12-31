@@ -38,6 +38,7 @@ interface SortableItemProps {
   id: string;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }
 
 // Sortable list wrapper
@@ -108,7 +109,7 @@ export function SortableList<T>({
 }
 
 // Sortable item wrapper
-export function SortableItem({ id, children, className }: SortableItemProps) {
+export function SortableItem({ id, children, className, style: styleProp }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -121,6 +122,7 @@ export function SortableItem({ id, children, className }: SortableItemProps) {
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    ...styleProp,
   };
 
   return (

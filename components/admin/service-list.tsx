@@ -204,8 +204,13 @@ export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey 
                 )}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {categoryServices.map((service) => (
-                    <SortableItem key={service.id} id={service.id} className="h-full">
+                  {categoryServices.map((service, index) => (
+                    <SortableItem 
+                      key={service.id} 
+                      id={service.id} 
+                      className="h-full animate-card-in"
+                      style={{ '--index': index } as React.CSSProperties}
+                    >
                       {renderServiceCard(service)}
                     </SortableItem>
                   ))}
