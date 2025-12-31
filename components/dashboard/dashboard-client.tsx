@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Computer } from 'lucide-react';
 import { SettingsIcon } from '@/components/ui/settings';
 import { AnimateIcon } from '@/components/ui/animate-icon';
@@ -13,6 +14,9 @@ import { SearchBar } from './search-bar';
 import { LayoutToggle } from './layout-toggle';
 import { useLayout } from '@/hooks/use-layout';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
+import { ServiceFormModal } from '@/components/admin/service-form-modal';
+import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
+import { deleteService } from '@/lib/actions';
 import type { Category, Service, DashboardLayout } from '@/lib/types';
 
 interface DashboardClientProps {
@@ -22,9 +26,23 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ categories, services, initialLayout }: DashboardClientProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { layout, setLayout } = useLayout({ initialLayout });
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+
+  // Cache key to bust icon cache on updates
+  const [cacheKey, setCacheKey] = useState(0);
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingService, setDeletingService] = useState<Service | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -62,6 +80,43 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
       services: filteredServices,
     };
   }, [searchQuery, categories, services]);
+
+  const handleEditService = useCallback((service: Service) => {
+    setEditingService(service);
+    setEditModalOpen(true);
+  }, []);
+
+  const handleEditSuccess = useCallback(() => {
+    setEditModalOpen(false);
+    setEditingService(null);
+    setCacheKey((k) => k + 1);
+    router.refresh();
+  }, [router]);
+
+  const handleDeleteService = useCallback((service: Service) => {
+    setDeletingService(service);
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingService) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    const result = await deleteService(deletingService.id);
+
+    if (result.success) {
+      setDeleteDialogOpen(false);
+      setDeletingService(null);
+      router.refresh();
+    } else {
+      setDeleteError(result.errors[0]?.message || 'Failed to delete service');
+    }
+
+    setIsDeleting(false);
+  }, [deletingService, router]);
 
   return (
     <>
@@ -123,12 +178,36 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
                   category={category}
                   services={categoryServices}
                   layout={layout}
+                  onEditService={handleEditService}
+                  onDeleteService={handleDeleteService}
+                  cacheKey={cacheKey}
                 />
               );
             })}
           </div>
         )}
       </main>
+
+      {/* Edit Service Modal */}
+      <ServiceFormModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        service={editingService ?? undefined}
+        categories={categories}
+        onSuccess={handleEditSuccess}
+        cacheKey={cacheKey}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={deletingService?.name ?? ''}
+        itemType="service"
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+        error={deleteError}
+      />
     </>
   );
 }

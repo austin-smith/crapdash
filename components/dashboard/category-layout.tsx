@@ -1,4 +1,4 @@
-import { ServiceCard } from './service-card';
+import { ServiceCardContext } from './service-card-context';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { cn } from '@/lib/utils';
 import type { Category, Service, DashboardLayout } from '@/lib/types';
@@ -7,9 +7,12 @@ interface CategoryLayoutProps {
   category: Category;
   services: Service[];
   layout: DashboardLayout;
+  onEditService: (service: Service) => void;
+  onDeleteService: (service: Service) => void;
+  cacheKey?: number;
 }
 
-export function CategoryLayout({ category, services, layout }: CategoryLayoutProps) {
+export function CategoryLayout({ category, services, layout, onEditService, onDeleteService, cacheKey }: CategoryLayoutProps) {
   if (services.length === 0) {
     return null;
   }
@@ -35,7 +38,13 @@ export function CategoryLayout({ category, services, layout }: CategoryLayoutPro
         }
       >
         {services.map((service) => (
-          <ServiceCard key={service.id} service={service} />
+          <ServiceCardContext
+            key={service.id}
+            service={service}
+            onEdit={onEditService}
+            onDelete={onDeleteService}
+            cacheKey={cacheKey}
+          />
         ))}
       </div>
     </section>

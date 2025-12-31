@@ -2,10 +2,6 @@
   <img src="./public/compy.png" alt="crapdash logo" width="120" />
 </p>
 
-<p align="center">
-  <a href="https://dash-demo.crapshack.net/">Live Demo</a>
-</p>
-
 # crapdash
 
 A minimal homepage to organize your links and services. Group them into categories and access everything from one place.
