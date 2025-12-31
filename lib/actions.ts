@@ -60,7 +60,7 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
     const buffer = Buffer.from(bytes);
     await fs.writeFile(filePath, buffer);
 
-    const iconPath = `/icons/${filename}`;
+    const iconPath = `/api/icons/${filename}`;
 
     return { success: true, data: iconPath };
   } catch (error) {

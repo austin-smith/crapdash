@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # macOS custom folder icon
-Icon?
+Icon[^a-zA-Z]
 
 # VS Code
 .vscode

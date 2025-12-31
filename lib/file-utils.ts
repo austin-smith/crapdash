@@ -42,7 +42,7 @@ export async function getServiceIconPath(serviceId: string): Promise<string | nu
       return nameWithoutExt === serviceId;
     });
 
-    return iconFile ? `/icons/${iconFile}` : null;
+    return iconFile ? `/api/icons/${iconFile}` : null;
   } catch (error) {
     console.error(`Error getting icon for service ${serviceId}:`, error);
     return null;
