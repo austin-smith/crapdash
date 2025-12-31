@@ -52,6 +52,10 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
     const filename = `${serviceId}${ext}`;
     const filePath = getIconFilePath(filename);
 
+    // Ensure icons directory exists (may not exist if volume is mounted)
+    const iconsDir = path.dirname(filePath);
+    await fs.mkdir(iconsDir, { recursive: true });
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await fs.writeFile(filePath, buffer);
