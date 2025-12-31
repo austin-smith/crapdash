@@ -1,0 +1,11 @@
+services:
+  crapdash:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crapdash
+    restart: unless-stopped
+    ports:
+      - "2727:2727"
+    volumes:
+      - ./data:/app/data

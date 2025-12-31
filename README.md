@@ -19,9 +19,24 @@ A minimal, customizable homepage to organize your links and services. Group them
 
 ## Getting Started
 
+### Local Development
+
 ```bash
 pnpm install
 pnpm dev
+```
+
+### Docker
+
+```bash
+docker build -t crapdash .
+docker run -d -p 2727:2727 -v ./data:/app/data --name crapdash crapdash
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build -d
 ```
 
 Open [localhost:2727](http://localhost:2727).
