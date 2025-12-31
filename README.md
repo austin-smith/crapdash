@@ -27,7 +27,7 @@ docker run -d \
   -p 2727:2727 \
   --mount type=bind,source=/path/to/data,target=/app/data \
   --restart=unless-stopped \
-  ghcr.io/crapdash/crapdash:latest
+  ghcr.io/crapshack/crapdash:latest
 ```
 
 ### Docker Compose
