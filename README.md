@@ -17,26 +17,31 @@ A minimal, customizable homepage to organize your links and services. Group them
 - **Categories**: Group services by project, team, or whatever makes sense
 - **Admin panel**: Manage services and categories through a simple UI
 
-## Getting Started
-
-### Local Development
-
-```bash
-pnpm install
-pnpm dev
-```
+## Installation
 
 ### Docker
 
 ```bash
-docker build -t crapdash .
-docker run -d -p 2727:2727 -v ./data:/app/data --name crapdash crapdash
+docker run -d \
+  --name crapdash \
+  -p 2727:2727 \
+  --mount type=bind,source=/path/to/data,target=/app/data \
+  --restart=unless-stopped \
+  ghcr.io/crapdash/crapdash:latest
 ```
 
 ### Docker Compose
 
-```bash
-docker compose up --build -d
+```yaml
+services:
+  crapdash:
+    image: ghcr.io/crapdash/crapdash:latest
+    container_name: crapdash
+    restart: unless-stopped
+    ports:
+      - "2727:2727"
+    volumes:
+      - ./data:/app/data
 ```
 
 Open [localhost:2727](http://localhost:2727).

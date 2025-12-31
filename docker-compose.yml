@@ -1,8 +1,6 @@
 services:
   crapdash:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/crapdash/crapdash:latest
     container_name: crapdash
     restart: unless-stopped
     ports:
