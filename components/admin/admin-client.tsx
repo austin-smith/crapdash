@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
-import { Plus, FolderOpen, Computer } from 'lucide-react';
+import { Plus, FolderOpen, Computer, Download } from 'lucide-react';
 import { ArrowLeftIcon } from '@/components/ui/arrow-left';
 import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -133,9 +133,21 @@ export function AdminClient({ categories: initialCategories, services: initialSe
         title="crapdash /admin"
       >
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
+        <Tooltip>
+          <TooltipTrigger>
+            <AnimateIcon animateOnHover asChild>
+              <Button variant="outline" size="icon-lg" asChild>
+                <a href="/api/config/export" download>
+                  <Download className="h-4 w-4" />
+                </a>
+              </Button>
+            </AnimateIcon>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Export config</TooltipContent>
+        </Tooltip>
         <ThemeToggle />
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <AnimateIcon animateOnHover asChild>
               <Button variant="outline" size="icon-lg" asChild>
                 <Link href="/">
@@ -144,7 +156,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
               </Button>
             </AnimateIcon>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Back to Dashboard</TooltipContent>
+          <TooltipContent side="bottom">Get back there</TooltipContent>
         </Tooltip>
       </PageHeader>
 
