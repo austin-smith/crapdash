@@ -10,13 +10,14 @@ import { Plus, FolderOpen, Computer } from 'lucide-react';
 import { ArrowLeftIcon } from '@/components/ui/arrow-left';
 import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { SettingsDialog } from '@/components/dashboard/settings-dialog';
+import { useSettings } from '@/hooks/use-settings';
 import { SearchBar } from '@/components/dashboard/search-bar';
 import { CategoryFormModal } from '@/components/admin/category-form-modal';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { DownloadIcon } from '@/components/ui/download';
-import type { Category, Service } from '@/lib/types';
+import type { Category, Service, DashboardSettings } from '@/lib/types';
 
 // Dynamic imports to avoid SSR for drag-and-drop components
 const CategoryList = dynamic(() => import('@/components/admin/category-list').then(m => m.CategoryList), { ssr: false });
@@ -25,11 +26,13 @@ const ServiceList = dynamic(() => import('@/components/admin/service-list').then
 interface AdminClientProps {
   categories: Category[];
   services: Service[];
+  initialSettings: Partial<DashboardSettings>;
 }
 
-export function AdminClient({ categories: initialCategories, services: initialServices }: AdminClientProps) {
+export function AdminClient({ categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
+  const { settings, updateSetting } = useSettings({ initialSettings });
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | undefined>();
@@ -37,12 +40,17 @@ export function AdminClient({ categories: initialCategories, services: initialSe
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setSettingsOpen((open) => !open);
       }
     }
 
@@ -146,7 +154,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           </TooltipTrigger>
           <TooltipContent side="bottom">Export config</TooltipContent>
         </Tooltip>
-        <ThemeToggle />
+        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <Tooltip>
           <TooltipTrigger>
             <AnimateIcon animateOnHover asChild>

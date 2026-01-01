@@ -5,8 +5,18 @@ export const LAYOUTS = {
 
 export type DashboardLayout = typeof LAYOUTS[keyof typeof LAYOUTS];
 
-export const LAYOUT_COOKIE_NAME = 'dashboard-layout';
 export const DEFAULT_LAYOUT: DashboardLayout = LAYOUTS.ROWS;
+export const SETTINGS_COOKIE_NAME = 'dashboard-settings';
+
+export interface DashboardSettings {
+  layout: DashboardLayout;
+  expandOnHover: boolean;
+}
+
+export const DEFAULT_SETTINGS: DashboardSettings = {
+  layout: DEFAULT_LAYOUT,
+  expandOnHover: false,
+};
 
 export interface Category {
   id: string;

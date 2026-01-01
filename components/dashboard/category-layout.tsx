@@ -7,12 +7,13 @@ interface CategoryLayoutProps {
   category: Category;
   services: Service[];
   layout: DashboardLayout;
+  expandOnHover: boolean;
   onEditService: (service: Service) => void;
   onDeleteService: (service: Service) => void;
   cacheKey?: number;
 }
 
-export function CategoryLayout({ category, services, layout, onEditService, onDeleteService, cacheKey }: CategoryLayoutProps) {
+export function CategoryLayout({ category, services, layout, expandOnHover, onEditService, onDeleteService, cacheKey }: CategoryLayoutProps) {
   if (services.length === 0) {
     return null;
   }
@@ -41,6 +42,7 @@ export function CategoryLayout({ category, services, layout, onEditService, onDe
           <ServiceCardContext
             key={service.id}
             service={service}
+            expandOnHover={expandOnHover}
             onEdit={onEditService}
             onDelete={onDeleteService}
             cacheKey={cacheKey}

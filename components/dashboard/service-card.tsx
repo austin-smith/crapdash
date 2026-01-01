@@ -7,21 +7,24 @@ import type { Service } from '@/lib/types';
 
 interface ServiceCardProps {
   service: Service;
+  expandOnHover: boolean;
   cacheKey?: number;
 }
 
-export function ServiceCard({ service, cacheKey }: ServiceCardProps) {
+export function ServiceCard({ service, expandOnHover, cacheKey }: ServiceCardProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   const onEnter = useCallback(() => {
+    if (!expandOnHover) return;
     timeoutRef.current = setTimeout(() => ref.current?.setAttribute('data-expanded', ''), 150);
-  }, []);
+  }, [expandOnHover]);
 
   const onLeave = useCallback(() => {
+    if (!expandOnHover) return;
     clearTimeout(timeoutRef.current);
     ref.current?.removeAttribute('data-expanded');
-  }, []);
+  }, [expandOnHover]);
 
   return (
     <a

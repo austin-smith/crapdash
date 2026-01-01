@@ -8,29 +8,28 @@ import { Computer } from 'lucide-react';
 import { SettingsIcon } from '@/components/ui/settings';
 import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { PageHeader } from '@/components/layout/page-header';
 import { CategoryLayout } from './category-layout';
 import { SearchBar } from './search-bar';
-import { LayoutToggle } from './layout-toggle';
-import { useLayout } from '@/hooks/use-layout';
+import { SettingsDialog } from './settings-dialog';
+import { useSettings } from '@/hooks/use-settings';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
-import { LAYOUTS, type Category, type Service, type DashboardLayout } from '@/lib/types';
+import { LAYOUTS, type Category, type Service, type DashboardSettings } from '@/lib/types';
 
 interface DashboardClientProps {
   categories: Category[];
   services: Service[];
-  initialLayout: DashboardLayout;
+  initialSettings: Partial<DashboardSettings>;
 }
 
-export function DashboardClient({ categories, services, initialLayout }: DashboardClientProps) {
+export function DashboardClient({ categories, services, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { layout, setLayout } = useLayout({ initialLayout });
+  const { settings, updateSetting } = useSettings({ initialSettings });
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -45,6 +44,9 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Settings dialog state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -54,6 +56,10 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         } else {
           searchInputRef.current?.focus();
         }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setSettingsOpen((open) => !open);
       }
     }
 
@@ -131,10 +137,7 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         title="crapdash"
         >
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
-        <div className="hidden sm:block">
-          <LayoutToggle layout={layout} onLayoutChange={setLayout} />
-        </div>
-        <ThemeToggle />
+        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <AnimateIcon animateOnHover asChild>
           <Button variant="outline" size="icon-lg" asChild>
             <Link href="/admin">
@@ -170,7 +173,7 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         ) : (
           <div
             className={
-              layout === LAYOUTS.COLUMNS
+              settings.layout === LAYOUTS.COLUMNS
                 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
                 : 'flex flex-col gap-12'
             }
@@ -184,7 +187,8 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
                   key={category.id}
                   category={category}
                   services={categoryServices}
-                  layout={layout}
+                  layout={settings.layout}
+                  expandOnHover={settings.expandOnHover}
                   onEditService={handleEditService}
                   onDeleteService={handleDeleteService}
                   cacheKey={cacheKey}
