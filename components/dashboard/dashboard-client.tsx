@@ -49,7 +49,11 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        searchInputRef.current?.focus();
+        if (document.activeElement === searchInputRef.current) {
+          searchInputRef.current?.blur();
+        } else {
+          searchInputRef.current?.focus();
+        }
       }
     }
 

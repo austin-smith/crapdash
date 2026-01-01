@@ -44,8 +44,6 @@ services:
       - ./crapdash:/app/data
 ```
 
-Open [localhost:2727](http://localhost:2727).
-
 ## Stack
 
 ![Next.js](https://img.shields.io/badge/Next.js-black?logo=nextdotjs)
