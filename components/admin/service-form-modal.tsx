@@ -33,7 +33,7 @@ export function ServiceFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{service ? 'Edit Service' : 'Add Service'}</DialogTitle>
         </DialogHeader>

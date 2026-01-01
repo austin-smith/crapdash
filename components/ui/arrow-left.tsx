@@ -107,11 +107,13 @@ const ArrowLeftIcon = forwardRef<ArrowLeftIconHandle, ArrowLeftIconProps>(
           <motion.path
             d="m12 19-7-7 7-7"
             variants={PATH_VARIANTS}
+            initial="normal"
             animate={controls}
           />
           <motion.path
             d="M19 12H5"
             variants={SECOND_PATH_VARIANTS}
+            initial="normal"
             animate={controls}
           />
         </svg>
