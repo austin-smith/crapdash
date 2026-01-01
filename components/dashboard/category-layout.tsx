@@ -1,7 +1,7 @@
 import { ServiceCardContext } from './service-card-context';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { cn } from '@/lib/utils';
-import type { Category, Service, DashboardLayout } from '@/lib/types';
+import { LAYOUTS, type Category, type Service, type DashboardLayout } from '@/lib/types';
 
 interface CategoryLayoutProps {
   category: Category;
@@ -17,7 +17,7 @@ export function CategoryLayout({ category, services, layout, onEditService, onDe
     return null;
   }
 
-  const isGrid = layout === 'rows';
+  const isGrid = layout === LAYOUTS.ROWS;
 
   return (
     <section className={cn(!isGrid && 'flex flex-col')}>

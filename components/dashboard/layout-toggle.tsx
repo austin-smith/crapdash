@@ -9,7 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { DashboardLayout } from '@/lib/types';
+import { LAYOUTS, type DashboardLayout } from '@/lib/types';
 
 interface LayoutToggleProps {
   layout: DashboardLayout;
@@ -21,16 +21,16 @@ export function LayoutToggle({ layout, onLayoutChange }: LayoutToggleProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon-lg">
-          {layout === 'rows' ? <Rows3 size={18} /> : <Columns3 size={18} />}
+          {layout === LAYOUTS.ROWS ? <Rows3 size={18} /> : <Columns3 size={18} />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup value={layout} onValueChange={(v) => onLayoutChange(v as DashboardLayout)}>
-          <DropdownMenuRadioItem value="rows">
+          <DropdownMenuRadioItem value={LAYOUTS.ROWS}>
             <Rows3 size={14} />
             Rows
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="columns">
+          <DropdownMenuRadioItem value={LAYOUTS.COLUMNS}>
             <Columns3 size={14} />
             Columns
           </DropdownMenuRadioItem>

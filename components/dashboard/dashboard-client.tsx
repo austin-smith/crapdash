@@ -17,7 +17,7 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
-import type { Category, Service, DashboardLayout } from '@/lib/types';
+import { LAYOUTS, type Category, type Service, type DashboardLayout } from '@/lib/types';
 
 interface DashboardClientProps {
   categories: Category[];
@@ -163,7 +163,7 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         ) : (
           <div
             className={
-              layout === 'columns'
+              layout === LAYOUTS.COLUMNS
                 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
                 : 'flex flex-col gap-12'
             }
