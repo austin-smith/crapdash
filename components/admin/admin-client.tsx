@@ -166,7 +166,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           {/* Categories Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Categories</h2>
+              <h2 className="text-xl font-semibold font-mono">Categories</h2>
               {categories.length > 0 && (
                 <Button onClick={handleAddCategory}>
                   <Plus className="h-4 w-4" />
@@ -209,7 +209,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           {/* Services Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Services</h2>
+              <h2 className="text-xl font-semibold font-mono">Services</h2>
               {services.length > 0 && (
                 <Button onClick={handleAddService}>
                   <Plus className="h-4 w-4" />

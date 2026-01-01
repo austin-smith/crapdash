@@ -109,7 +109,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
           disabled={isSubmitting}
         />
         {!service && serviceId && (
-          <FieldDescription>Slug: {serviceId}</FieldDescription>
+          <FieldDescription className="font-mono">Slug: {serviceId}</FieldDescription>
         )}
         {errors.name && <FieldError>{errors.name}</FieldError>}
       </Field>
@@ -134,6 +134,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
           placeholder="https://example.com, http://192.168.1.1:8080"
           type="url"
           disabled={isSubmitting}
+          className="font-mono text-xs"
         />
         <FieldDescription>Full URL including https:// or http://</FieldDescription>
         {errors.url && <FieldError>{errors.url}</FieldError>}
@@ -171,7 +172,6 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
           }}
           cacheKey={cacheKey}
         />
-        <FieldDescription>Upload a custom icon for this service</FieldDescription>
       </Field>
 
       <div className="flex items-center justify-between rounded-lg border p-4">
