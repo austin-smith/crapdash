@@ -1,6 +1,7 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getCategories, getActiveServices } from '@/lib/db';
 import { DashboardClient } from '@/components/dashboard/dashboard-client';
+import { isMacUserAgent } from '@/lib/platform';
 import {
   LAYOUTS,
   SETTINGS_COOKIE_NAME,
@@ -31,20 +32,23 @@ function parseSettings(cookieValue: string | undefined): Partial<DashboardSettin
 }
 
 export default async function Page() {
-  const [categories, services, cookieStore] = await Promise.all([
+  const [categories, services, cookieStore, headerStore] = await Promise.all([
     getCategories(),
     getActiveServices(),
     cookies(),
+    headers(),
   ]);
 
   const settingsValue = cookieStore.get(SETTINGS_COOKIE_NAME)?.value;
   const initialSettings = parseSettings(settingsValue);
+  const isMac = isMacUserAgent(headerStore.get('user-agent'));
 
   return (
     <DashboardClient
       categories={categories}
       services={services}
       initialSettings={initialSettings}
+      isMac={isMac}
     />
   );
 }

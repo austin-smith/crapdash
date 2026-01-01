@@ -18,7 +18,7 @@ import { AnimateIcon } from '@/components/ui/animate-icon';
 import { SlidersHorizontalIcon } from '@/components/ui/sliders-horizontal';
 import { THEMES, THEME_META } from '@/components/theme/theme-config';
 import { Kbd } from '@/components/ui/kbd';
-import { useModifierKey } from '@/hooks/use-platform';
+import { getModifierKey } from '@/lib/platform';
 import { LAYOUTS, type DashboardSettings } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -30,11 +30,12 @@ interface SettingsDialogProps {
   ) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isMac: boolean;
 }
 
-export function SettingsDialog({ settings, onSettingChange, open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, isMac }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme();
-  const modifierKey = useModifierKey();
+  const modifierKey = getModifierKey(isMac);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -27,9 +27,10 @@ interface AdminClientProps {
   categories: Category[];
   services: Service[];
   initialSettings: Partial<DashboardSettings>;
+  isMac: boolean;
 }
 
-export function AdminClient({ categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
+export function AdminClient({ categories: initialCategories, services: initialServices, initialSettings, isMac }: AdminClientProps) {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
   const { settings, updateSetting } = useSettings({ initialSettings });
@@ -141,7 +142,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
       <PageHeader
         title="crapdash /admin"
       >
-        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} isMac={isMac} />
         <Tooltip>
           <TooltipTrigger>
             <AnimateIcon animateOnHover>
@@ -154,7 +155,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           </TooltipTrigger>
           <TooltipContent side="bottom">Export config</TooltipContent>
         </Tooltip>
-        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} isMac={isMac} />
         <Tooltip>
           <TooltipTrigger>
             <AnimateIcon animateOnHover asChild>

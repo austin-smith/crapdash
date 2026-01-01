@@ -23,9 +23,10 @@ interface DashboardClientProps {
   categories: Category[];
   services: Service[];
   initialSettings: Partial<DashboardSettings>;
+  isMac: boolean;
 }
 
-export function DashboardClient({ categories, services, initialSettings }: DashboardClientProps) {
+export function DashboardClient({ categories, services, initialSettings, isMac }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -136,8 +137,8 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
       <PageHeader
         title="crapdash"
         >
-        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
-        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} isMac={isMac} />
+        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} isMac={isMac} />
         <AnimateIcon animateOnHover asChild>
           <Button variant="outline" size="icon-lg" asChild>
             <Link href="/admin">
