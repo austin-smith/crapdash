@@ -154,10 +154,12 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           <TooltipContent side="bottom">Export config</TooltipContent>
         </Tooltip>
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger onClick={() => setSettingsOpen(true)}>
             <AnimateIcon animateOnHover>
-              <Button variant="outline" size="icon-lg" onClick={() => setSettingsOpen(true)}>
-                <SlidersHorizontalIcon size={18} />
+              <Button variant="outline" size="icon-lg" asChild>
+                <span>
+                  <SlidersHorizontalIcon size={18} />
+                </span>
               </Button>
             </AnimateIcon>
           </TooltipTrigger>

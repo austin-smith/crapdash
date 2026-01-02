@@ -134,10 +134,12 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
       <PageHeader title="crapdash">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger onClick={() => setSettingsOpen(true)}>
             <AnimateIcon animateOnHover>
-              <Button variant="outline" size="icon-lg" onClick={() => setSettingsOpen(true)}>
-                <SlidersHorizontalIcon size={18} />
+              <Button variant="outline" size="icon-lg" asChild>
+                <span>
+                  <SlidersHorizontalIcon size={18} />
+                </span>
               </Button>
             </AnimateIcon>
           </TooltipTrigger>
@@ -145,7 +147,7 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
         </Tooltip>
         <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <AnimateIcon animateOnHover>
               <Button variant="outline" size="icon-lg" asChild>
                 <Link href="/admin">

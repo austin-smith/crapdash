@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getCategories, getServices } from '@/lib/db';
 import { AdminClient } from '@/components/admin/admin-client';
@@ -6,6 +7,9 @@ import { parseSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata: Metadata = {
+  title: 'crapdash /admin',
+};
 
 export default async function AdminPage() {
   const [categories, services, cookieStore] = await Promise.all([
