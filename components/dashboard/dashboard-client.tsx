@@ -1,36 +1,38 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Computer } from 'lucide-react';
 import { SettingsIcon } from '@/components/ui/settings';
+import { SlidersHorizontalIcon } from '@/components/ui/sliders-horizontal';
 import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { PageHeader } from '@/components/layout/page-header';
 import { CategoryLayout } from './category-layout';
 import { SearchBar } from './search-bar';
-import { LayoutToggle } from './layout-toggle';
-import { useLayout } from '@/hooks/use-layout';
+import { SettingsDialog } from './settings-dialog';
+import { useSettings } from '@/hooks/use-settings';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
-import { LAYOUTS, type Category, type Service, type DashboardLayout } from '@/lib/types';
+import { LAYOUTS, type Category, type Service, type DashboardSettings } from '@/lib/types';
 
 interface DashboardClientProps {
   categories: Category[];
   services: Service[];
-  initialLayout: DashboardLayout;
+  initialSettings: Partial<DashboardSettings>;
 }
 
-export function DashboardClient({ categories, services, initialLayout }: DashboardClientProps) {
+export function DashboardClient({ categories, services, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { layout, setLayout } = useLayout({ initialLayout });
+  const { settings, updateSetting } = useSettings({ initialSettings });
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -45,21 +47,23 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
+  // Settings dialog state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      mod: true,
+      handler: () => {
         if (document.activeElement === searchInputRef.current) {
           searchInputRef.current?.blur();
         } else {
           searchInputRef.current?.focus();
         }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+      },
+    },
+    { key: '.', mod: true, handler: () => setSettingsOpen((o) => !o) },
+  ]);
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -127,21 +131,31 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
 
   return (
     <>
-      <PageHeader
-        title="crapdash"
-        >
+      <PageHeader title="crapdash">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
-        <div className="hidden sm:block">
-          <LayoutToggle layout={layout} onLayoutChange={setLayout} />
-        </div>
-        <ThemeToggle />
-        <AnimateIcon animateOnHover asChild>
-          <Button variant="outline" size="icon-lg" asChild>
-            <Link href="/admin">
-              <SettingsIcon size={18} />
-            </Link>
-          </Button>
-        </AnimateIcon>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon-lg" onClick={() => setSettingsOpen(true)}>
+              <AnimateIcon animateOnHover>
+                <SlidersHorizontalIcon size={18} />
+              </AnimateIcon>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Preferences</TooltipContent>
+        </Tooltip>
+        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon-lg" asChild>
+              <Link href="/admin">
+                <AnimateIcon animateOnHover>
+                  <SettingsIcon size={18} />
+                </AnimateIcon>
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Admin</TooltipContent>
+        </Tooltip>
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
@@ -170,7 +184,7 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
         ) : (
           <div
             className={
-              layout === LAYOUTS.COLUMNS
+              settings.layout === LAYOUTS.COLUMNS
                 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
                 : 'flex flex-col gap-12'
             }
@@ -184,7 +198,8 @@ export function DashboardClient({ categories, services, initialLayout }: Dashboa
                   key={category.id}
                   category={category}
                   services={categoryServices}
-                  layout={layout}
+                  layout={settings.layout}
+                  expandOnHover={settings.expandOnHover}
                   onEditService={handleEditService}
                   onDeleteService={handleDeleteService}
                   cacheKey={cacheKey}

@@ -4,7 +4,7 @@
 
 # crapdash
 
-A minimal, customizable homepage to organize your links and services. Group them into categories and access everything from one place.
+A low-frills, customizable homepage to organize your links and services. Group them into categories and access everything from one place.
 
 <p align="center">
   <img src="./public/screenshots/screen-grab-light.png" alt="Light mode" width="49%" />

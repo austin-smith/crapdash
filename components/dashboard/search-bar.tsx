@@ -2,7 +2,7 @@
 
 import { forwardRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
+import { Kbd, ModKbd } from '@/components/ui/kbd';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
       <div
         className={cn(
           'relative w-full transition-all duration-300 ease-out',
-          isExpanded ? 'md:w-80' : 'md:w-44'
+          isExpanded ? 'md:w-80' : 'md:w-48'
         )}
       >
         <Search
@@ -44,8 +44,15 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
           }}
           className="pl-9 pr-3 sm:pr-16 transition-all duration-300"
         />
-        <div className="absolute right-3 inset-y-0 hidden sm:flex items-center pointer-events-none">
-          <Kbd className="bg-accent border h-6 px-2 text-xs">⌘K</Kbd>
+        <div className="absolute right-3 inset-y-0 hidden sm:flex items-center gap-1 pointer-events-none">
+          {isFocused ? (
+            <Kbd className="bg-accent border h-6 px-2 text-xs">Esc</Kbd>
+          ) : (
+            <>
+              <ModKbd className="bg-accent border h-6 px-2 text-xs" />
+              <Kbd className="bg-accent border h-6 px-2 text-xs">K</Kbd>
+            </>
+          )}
         </div>
       </div>
     );

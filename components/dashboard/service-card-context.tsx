@@ -14,13 +14,14 @@ import type { Service } from '@/lib/types';
 
 interface ServiceCardContextProps {
   service: Service;
+  expandOnHover: boolean;
   onEdit: (service: Service) => void;
   onDelete: (service: Service) => void;
   cacheKey?: number;
   index?: number;
 }
 
-export function ServiceCardContext({ service, onEdit, onDelete, cacheKey, index = 0 }: ServiceCardContextProps) {
+export function ServiceCardContext({ service, expandOnHover, onEdit, onDelete, cacheKey, index = 0 }: ServiceCardContextProps) {
   const handleOpenInNewTab = () => {
     window.open(service.url, '_blank', 'noopener,noreferrer');
   };
@@ -57,7 +58,7 @@ export function ServiceCardContext({ service, onEdit, onDelete, cacheKey, index 
           className="group/context animate-card-in"
           style={{ '--index': index } as React.CSSProperties}
         >
-          <ServiceCard service={service} cacheKey={cacheKey} />
+          <ServiceCard service={service} expandOnHover={expandOnHover} cacheKey={cacheKey} />
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
