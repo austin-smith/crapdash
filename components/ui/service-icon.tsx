@@ -1,7 +1,12 @@
+'use client';
+
 import Image from 'next/image';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ICON_TYPES, type Service } from '@/lib/types';
-import { CategoryIcon } from './category-icon';
+import { CategoryIcon, resolveIconName } from './category-icon';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ServiceIconProps {
   service: Service;
@@ -30,39 +35,65 @@ const LUCIDE_ICON_SIZE_CLASSES = {
 };
 
 export function ServiceIcon({ service, size = 'md', className, cacheKey }: ServiceIconProps) {
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const sizeClass = SIZE_CLASSES[size];
+  const lucideSize = LUCIDE_ICON_SIZE_CLASSES[size];
+  const isInvalidLucide =
+    service.icon?.type === ICON_TYPES.ICON && !resolveIconName(service.icon.value);
 
   // If service has an icon, display it based on type
   if (service.icon) {
-    if (service.icon.type === ICON_TYPES.IMAGE) {
+    if (service.icon.type === ICON_TYPES.IMAGE && !loadFailed) {
       const iconUrl = `/api/${service.icon.value}`;
       const iconSrc = cacheKey ? `${iconUrl}?v=${cacheKey}` : iconUrl;
       return (
         <div className={cn('relative flex-shrink-0 rounded-lg overflow-hidden', sizeClass, className)}>
+          {!isLoaded && <Skeleton className="absolute inset-0" aria-hidden />}
           <Image
             src={iconSrc}
             alt={`${service.name} icon`}
             fill
-            className="object-cover"
+            className={cn('object-cover transition-opacity', !isLoaded && 'opacity-0')}
             unoptimized
+            onError={() => setLoadFailed(true)}
+            onLoadingComplete={() => setIsLoaded(true)}
           />
         </div>
       );
     }
 
-    if (service.icon.type === ICON_TYPES.ICON) {
-      const lucideSize = LUCIDE_ICON_SIZE_CLASSES[size];
-      return (
+    // If the image fails to load or a Lucide icon was chosen, fall back to a Lucide glyph
+    if (service.icon.type === ICON_TYPES.ICON || loadFailed || isInvalidLucide) {
+      const lucideName = loadFailed || isInvalidLucide ? 'ImageOff' : service.icon.value;
+      const isFallback = loadFailed || isInvalidLucide;
+      const fallbackClasses = isFallback
+        ? 'border border-dashed border-muted-foreground/50 bg-muted/40 text-muted-foreground/80 shadow-inner'
+        : 'bg-muted';
+      const tooltipMessage = loadFailed ? 'Failed to load image' : 'Invalid icon name';
+      const iconNode = (
         <div
           className={cn(
-            'flex-shrink-0 rounded-lg flex items-center justify-center bg-muted',
+            'flex-shrink-0 rounded-lg flex items-center justify-center',
+            fallbackClasses,
             sizeClass,
             className
           )}
         >
-          <CategoryIcon name={service.icon.value} className={lucideSize} />
+          <CategoryIcon name={lucideName} className={lucideSize} />
         </div>
       );
+
+      if (isFallback) {
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>{iconNode}</TooltipTrigger>
+            <TooltipContent side="bottom">{tooltipMessage}</TooltipContent>
+          </Tooltip>
+        );
+      }
+
+      return iconNode;
     }
   }
 
