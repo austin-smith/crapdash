@@ -1,37 +1,26 @@
 'use client';
 
+import { ToggleGroupItem } from '@/components/ui/toggle-group';
 import { LAYOUTS, type DashboardLayout } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface LayoutPreviewOptionProps {
+  value: DashboardLayout;
   label: string;
-  selected: boolean;
-  onSelect: () => void;
-  variant: DashboardLayout;
 }
 
-export function LayoutPreviewOption({
-  label,
-  selected,
-  onSelect,
-  variant,
-}: LayoutPreviewOptionProps) {
+export function LayoutPreviewOption({ value, label }: LayoutPreviewOptionProps) {
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        'flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors',
-        'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        selected ? 'border-primary bg-primary/5 text-primary' : 'border-border text-foreground'
-      )}
+    <ToggleGroupItem
+      value={value}
+      variant="outline"
+      className="h-full flex-col items-start gap-2 p-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:text-primary"
     >
       <div className="text-xs font-medium">{label}</div>
-      <div className="rounded-md border bg-muted/40 p-2">
-        {variant === LAYOUTS.ROWS ? <RowsPreview /> : <ColumnsPreview />}
+      <div className="rounded-md border bg-background/80 p-2 w-full flex-1">
+        {value === LAYOUTS.ROWS ? <RowsPreview /> : <ColumnsPreview />}
       </div>
-    </button>
+    </ToggleGroupItem>
   );
 }
 

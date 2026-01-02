@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,6 @@ import { THEMES, THEME_META } from '@/components/theme/theme-config';
 import { Kbd } from '@/components/ui/kbd';
 import { getModifierKey } from '@/lib/platform';
 import { LAYOUTS, type DashboardSettings } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface SettingsDialogProps {
   settings: DashboardSettings;
@@ -57,20 +57,16 @@ export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, 
           {/* Layout Setting */}
           <div className="flex flex-col gap-2">
             <Label className="text-muted-foreground">Layout</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <LayoutPreviewOption
-                label="Rows"
-                selected={settings.layout === LAYOUTS.ROWS}
-                onSelect={() => onSettingChange('layout', LAYOUTS.ROWS)}
-                variant={LAYOUTS.ROWS}
-              />
-              <LayoutPreviewOption
-                label="Columns"
-                selected={settings.layout === LAYOUTS.COLUMNS}
-                onSelect={() => onSettingChange('layout', LAYOUTS.COLUMNS)}
-                variant={LAYOUTS.COLUMNS}
-              />
-            </div>
+            <ToggleGroup
+              type="single"
+              value={settings.layout}
+              onValueChange={(value) => value && onSettingChange('layout', value as typeof settings.layout)}
+              className="grid grid-cols-2 gap-2 w-full items-stretch"
+              spacing={2}
+            >
+              <LayoutPreviewOption value={LAYOUTS.ROWS} label="Rows" />
+              <LayoutPreviewOption value={LAYOUTS.COLUMNS} label="Columns" />
+            </ToggleGroup>
           </div>
 
           <Separator />
@@ -78,20 +74,28 @@ export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, 
           {/* Theme Setting */}
           <div className="flex flex-col gap-2">
             <Label className="text-muted-foreground">Theme</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <ToggleGroup
+              type="single"
+              value={theme}
+              onValueChange={(value) => value && setTheme(value)}
+              className="grid grid-cols-3 gap-2 w-full"
+              spacing={2}
+            >
               {THEMES.map((t) => {
-                const { icon, label } = THEME_META[t];
+                const { icon: Icon, label } = THEME_META[t];
                 return (
-                  <OptionButton
+                  <ToggleGroupItem
                     key={t}
-                    icon={icon}
-                    label={label}
-                    selected={theme === t}
-                    onSelect={() => setTheme(t)}
-                  />
+                    value={t}
+                    variant="outline"
+                    className="flex-col h-auto gap-1.5 p-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:text-primary"
+                  >
+                    <Icon size={20} />
+                    <span className="text-xs font-medium">{label}</span>
+                  </ToggleGroupItem>
                 );
               })}
-            </div>
+            </ToggleGroup>
           </div>
 
           <Separator />
@@ -125,32 +129,6 @@ export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, 
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-interface OptionButtonProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  selected: boolean;
-  onSelect: () => void;
-}
-
-function OptionButton({ icon: Icon, label, selected, onSelect }: OptionButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors',
-        'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        selected
-          ? 'border-primary bg-primary/5 text-primary'
-          : 'border-border text-muted-foreground'
-      )}
-    >
-      <Icon size={20} />
-      <span className="text-xs font-medium">{label}</span>
-    </button>
   );
 }
 
