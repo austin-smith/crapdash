@@ -29,7 +29,8 @@ export function useSettings({ initialSettings }: UseSettingsOptions = {}) {
   const persistSettings = useCallback((newSettings: DashboardSettings) => {
     const json = JSON.stringify(newSettings);
     localStorage.setItem(STORAGE_KEY, json);
-    setCookie(SETTINGS_COOKIE_NAME, json);
+    // Encode cookie value so it stays cookie-safe across browsers/parsers
+    setCookie(SETTINGS_COOKIE_NAME, encodeURIComponent(json));
   }, []);
 
   const updateSetting = useCallback(

@@ -1,30 +1,11 @@
 import { cookies } from 'next/headers';
 import { getCategories, getServices } from '@/lib/db';
 import { AdminClient } from '@/components/admin/admin-client';
-import { LAYOUTS, SETTINGS_COOKIE_NAME, type DashboardSettings } from '@/lib/types';
+import { SETTINGS_COOKIE_NAME } from '@/lib/types';
+import { parseSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
-function parseSettings(cookieValue: string | undefined): Partial<DashboardSettings> {
-  if (!cookieValue) return {};
-  
-  try {
-    const parsed = JSON.parse(cookieValue);
-    const settings: Partial<DashboardSettings> = {};
-    
-    if (parsed.layout === LAYOUTS.ROWS || parsed.layout === LAYOUTS.COLUMNS) {
-      settings.layout = parsed.layout;
-    }
-    
-    if (typeof parsed.expandOnHover === 'boolean') {
-      settings.expandOnHover = parsed.expandOnHover;
-    }
-    
-    return settings;
-  } catch {
-    return {};
-  }
-}
 
 export default async function AdminPage() {
   const [categories, services, cookieStore] = await Promise.all([
