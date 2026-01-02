@@ -1,30 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { usePlatformDefault } from '@/components/platform/platform-provider';
+import { MODIFIER_CMD, type ModifierPlatform } from '@/lib/platform';
 
-function detectIsMac(): boolean {
-  if (typeof navigator === 'undefined') return false;
-
-  // Prefer UA hints when available (Chromium userAgentData)
-  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
-  const uaData = nav.userAgentData;
-  if (uaData?.platform) {
-    return /mac|ios|ipad|iphone|ipod/i.test(uaData.platform);
-  }
-
-  const platform = navigator.platform || '';
-  const ua = navigator.userAgent || '';
-  return /Mac|iPhone|iPad|iPod/i.test(platform) || /Mac|iPhone|iPad|iPod/i.test(ua);
-}
-
-function getModifierKey(isMac: boolean): string {
-  return isMac ? '⌘' : 'Ctrl';
+function getModifierLabel(platform: ModifierPlatform): string {
+  return platform === MODIFIER_CMD ? '⌘' : 'Ctrl';
 }
 
 /**
- * Returns the platform-appropriate modifier symbol (⌘ or Ctrl) on the client.
- * Falls back to Ctrl on server render or unknown platforms.
+ * Returns the platform-appropriate modifier symbol (⌘ or Ctrl) without hydration flicker.
+ * Seeds from the server-provided platform value; no client revalidation to avoid post-hydration flips.
  */
 export function useModifierKey(): string {
-  return useMemo(() => getModifierKey(detectIsMac()), []);
+  const platform = usePlatformDefault();
+  return getModifierLabel(platform);
 }
