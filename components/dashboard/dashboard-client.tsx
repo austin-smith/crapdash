@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,7 @@ import { CategoryLayout } from './category-layout';
 import { SearchBar } from './search-bar';
 import { SettingsDialog } from './settings-dialog';
 import { useSettings } from '@/hooks/use-settings';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
 import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
@@ -47,25 +48,20 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
   // Settings dialog state
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      mod: true,
+      handler: () => {
         if (document.activeElement === searchInputRef.current) {
           searchInputRef.current?.blur();
         } else {
           searchInputRef.current?.focus();
         }
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault();
-        setSettingsOpen((open) => !open);
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+      },
+    },
+    { key: '.', mod: true, handler: () => setSettingsOpen((o) => !o) },
+  ]);
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -133,9 +129,7 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
 
   return (
     <>
-      <PageHeader
-        title="crapdash"
-        >
+      <PageHeader title="crapdash">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <AnimateIcon animateOnHover asChild>

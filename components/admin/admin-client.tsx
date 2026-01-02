@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { AnimateIcon } from '@/components/ui/animate-icon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { SettingsDialog } from '@/components/dashboard/settings-dialog';
 import { useSettings } from '@/hooks/use-settings';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { SearchBar } from '@/components/dashboard/search-bar';
 import { CategoryFormModal } from '@/components/admin/category-form-modal';
 import { ServiceFormModal } from '@/components/admin/service-form-modal';
@@ -42,21 +43,10 @@ export function AdminClient({ categories: initialCategories, services: initialSe
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault();
-        setSettingsOpen((open) => !open);
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useKeyboardShortcuts([
+    { key: 'k', mod: true, handler: () => searchInputRef.current?.focus() },
+    { key: '.', mod: true, handler: () => setSettingsOpen((o) => !o) },
+  ]);
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -138,9 +128,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
 
   return (
     <>
-      <PageHeader
-        title="crapdash /admin"
-      >
+      <PageHeader title="crapdash /admin">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <Tooltip>
           <TooltipTrigger>
