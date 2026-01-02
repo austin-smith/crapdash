@@ -1,7 +1,6 @@
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { getCategories, getServices } from '@/lib/db';
 import { AdminClient } from '@/components/admin/admin-client';
-import { isMacUserAgent } from '@/lib/platform';
 import { LAYOUTS, SETTINGS_COOKIE_NAME, type DashboardSettings } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -28,23 +27,20 @@ function parseSettings(cookieValue: string | undefined): Partial<DashboardSettin
 }
 
 export default async function AdminPage() {
-  const [categories, services, cookieStore, headerStore] = await Promise.all([
+  const [categories, services, cookieStore] = await Promise.all([
     getCategories(),
     getServices(),
     cookies(),
-    headers(),
   ]);
 
   const settingsValue = cookieStore.get(SETTINGS_COOKIE_NAME)?.value;
   const initialSettings = parseSettings(settingsValue);
-  const isMac = isMacUserAgent(headerStore.get('user-agent'));
 
   return (
     <AdminClient
       categories={categories}
       services={services}
       initialSettings={initialSettings}
-      isMac={isMac}
     />
   );
 }

@@ -1,3 +1,6 @@
+'use client';
+
+import { useModifierKey } from "@/hooks/use-modifier-key"
 import { cn } from "@/lib/utils"
 
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
@@ -13,6 +16,11 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   )
 }
 
+function ModKbd(props: React.ComponentProps<typeof Kbd>) {
+  const modifier = useModifierKey()
+  return <Kbd {...props}>{modifier}</Kbd>
+}
+
 function KbdGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <kbd
@@ -23,4 +31,4 @@ function KbdGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-export { Kbd, KbdGroup }
+export { Kbd, KbdGroup, ModKbd }

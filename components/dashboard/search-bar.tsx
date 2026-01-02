@@ -2,22 +2,19 @@
 
 import { forwardRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
+import { Kbd, ModKbd } from '@/components/ui/kbd';
 import { Search } from 'lucide-react';
-import { getModifierKey } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  isMac: boolean;
 }
 
 export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
-  function SearchBar({ value, onChange, isMac }, ref) {
+  function SearchBar({ value, onChange }, ref) {
     const [isFocused, setIsFocused] = useState(false);
     const isExpanded = isFocused || value.length > 0;
-    const modifierKey = getModifierKey(isMac);
 
     return (
       <div
@@ -52,7 +49,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
             <Kbd className="bg-accent border h-6 px-2 text-xs">Esc</Kbd>
           ) : (
             <>
-              <Kbd className="bg-accent border h-6 px-2 text-xs">{modifierKey}</Kbd>
+              <ModKbd className="bg-accent border h-6 px-2 text-xs" />
               <Kbd className="bg-accent border h-6 px-2 text-xs">K</Kbd>
             </>
           )}

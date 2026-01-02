@@ -17,8 +17,7 @@ import {
 import { AnimateIcon } from '@/components/ui/animate-icon';
 import { SlidersHorizontalIcon } from '@/components/ui/sliders-horizontal';
 import { THEMES, THEME_META } from '@/components/theme/theme-config';
-import { Kbd } from '@/components/ui/kbd';
-import { getModifierKey } from '@/lib/platform';
+import { Kbd, ModKbd } from '@/components/ui/kbd';
 import { LAYOUTS, type DashboardSettings } from '@/lib/types';
 
 interface SettingsDialogProps {
@@ -29,12 +28,10 @@ interface SettingsDialogProps {
   ) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  isMac: boolean;
 }
 
-export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, isMac }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSettingChange, open, onOpenChange }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme();
-  const modifierKey = getModifierKey(isMac);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,9 +118,9 @@ export function SettingsDialog({ settings, onSettingChange, open, onOpenChange, 
           <div className="flex flex-col gap-2">
             <Label className="text-muted-foreground">Keyboard shortcuts</Label>
             <div className="rounded-lg border p-3 flex flex-col gap-2">
-              <ShortcutRow keys={[modifierKey, '.']} description="Toggle settings" />
-              <ShortcutRow keys={[modifierKey, 'J']} description="Cycle theme" />
-              <ShortcutRow keys={[modifierKey, 'K']} description="Focus search" />
+              <ShortcutRow keys={['mod', '.']} description="Toggle settings" />
+              <ShortcutRow keys={['mod', 'J']} description="Cycle theme" />
+              <ShortcutRow keys={['mod', 'K']} description="Focus search" />
             </div>
           </div>
         </div>
@@ -142,9 +139,9 @@ function ShortcutRow({ keys, description }: ShortcutRowProps) {
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{description}</span>
       <div className="flex items-center gap-0.5">
-        {keys.map((key, i) => (
-          <Kbd key={i}>{key}</Kbd>
-        ))}
+        {keys.map((key, i) =>
+          key === 'mod' ? <ModKbd key={i} /> : <Kbd key={i}>{key}</Kbd>
+        )}
       </div>
     </div>
   );
