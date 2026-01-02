@@ -15,11 +15,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
-import { IconUpload } from './icon-upload';
-import { CategoryIcon } from '@/components/ui/category-icon';
+import { IconPicker } from './icon-picker';
+import { CategoryIcon, resolveIconName } from '@/components/ui/category-icon';
 import { createService, updateService, uploadServiceIcon } from '@/lib/actions';
 import { slugify } from '@/lib/utils';
-import type { Category, Service } from '@/lib/types';
+import { ICON_TYPES, type Category, type IconConfig, type Service } from '@/lib/types';
 
 interface ServiceFormProps {
   service?: Service;
@@ -34,7 +34,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
   const [description, setDescription] = useState(service?.description || '');
   const [url, setUrl] = useState(service?.url || '');
   const [categoryId, setCategoryId] = useState(service?.categoryId || '');
-  const [icon, setIcon] = useState(service?.icon || '');
+  const [icon, setIcon] = useState<IconConfig | undefined>(service?.icon);
   const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
   const [active, setActive] = useState(service?.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,21 +58,33 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     setErrors({});
 
     const id = service?.id || serviceId;
-    let iconPath = icon || undefined;
+    let finalIcon: IconConfig | undefined = icon;
 
-    // Upload pending icon file if exists
-    if (pendingIconFile) {
-      const uploadedPath = await uploadIcon(pendingIconFile, id);
-      if (uploadedPath) {
-        iconPath = uploadedPath;
-      } else {
-        setErrors({ icon: 'Failed to upload icon' });
+    // Handle icon based on type
+    if (icon?.type === ICON_TYPES.IMAGE) {
+      // Upload pending icon file if exists
+      if (pendingIconFile) {
+        const uploadedPath = await uploadIcon(pendingIconFile, id);
+        if (uploadedPath) {
+          finalIcon = { type: ICON_TYPES.IMAGE, value: uploadedPath };
+        } else {
+          setErrors({ icon: 'Failed to upload icon' });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } else if (icon?.type === ICON_TYPES.ICON) {
+      // Validate and resolve Lucide icon name
+      const resolvedName = resolveIconName(icon.value);
+      if (!resolvedName) {
+        setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
         setIsSubmitting(false);
         return;
       }
+      finalIcon = { type: ICON_TYPES.ICON, value: resolvedName };
     }
 
-    const formData = { name, description, url, categoryId, icon: iconPath, active };
+    const formData = { name, description, url, categoryId, icon: finalIcon, active };
     const result = service
       ? await updateService(service.id, formData)
       : await createService({ id: serviceId, ...formData });
@@ -83,7 +95,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       setDescription('');
       setUrl('');
       setCategoryId('');
-      setIcon('');
+      setIcon(undefined);
       setPendingIconFile(null);
       setActive(true);
       onSuccess?.();
@@ -160,18 +172,17 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         {errors.categoryId && <FieldError>{errors.categoryId}</FieldError>}
       </Field>
 
-      <Field>
+      <Field data-invalid={!!errors.icon}>
         <FieldLabel>Icon</FieldLabel>
-        <IconUpload
+        <IconPicker
           value={icon}
           pendingFile={pendingIconFile}
-          onFileSelect={(file) => setPendingIconFile(file)}
-          onClear={() => {
-            setIcon('');
-            setPendingIconFile(null);
-          }}
+          onValueChange={setIcon}
+          onFileSelect={setPendingIconFile}
+          onClear={() => setIcon(undefined)}
           cacheKey={cacheKey}
         />
+        {errors.icon && <FieldError>{errors.icon}</FieldError>}
       </Field>
 
       <div className="flex items-center justify-between rounded-lg border p-4">

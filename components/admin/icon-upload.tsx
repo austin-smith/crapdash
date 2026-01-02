@@ -4,7 +4,7 @@ import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
-import { IMAGE_ACCEPT, IMAGE_TYPE_ERROR, IMAGE_TYPE_LABEL, isAllowedImageMime } from '@/lib/image-constants';
+import { IMAGE_ACCEPT, IMAGE_TYPE_ERROR, IMAGE_TYPE_LABEL, MAX_FILE_SIZE, isAllowedImageMime } from '@/lib/image-constants';
 
 interface IconUploadProps {
   value?: string;
@@ -13,8 +13,6 @@ interface IconUploadProps {
   onClear: () => void;
   cacheKey?: number;
 }
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey }: IconUploadProps) {
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +112,7 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {IMAGE_TYPE_LABEL} (max 2MB)
+            {IMAGE_TYPE_LABEL} (max {MAX_FILE_SIZE / 1024 / 1024}MB)
           </p>
         </div>
       </div>

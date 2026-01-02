@@ -1,8 +1,14 @@
 import { z } from 'zod';
+import { ICON_TYPES } from './types';
 
 export const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   icon: z.string().max(50, 'Icon name must be less than 50 characters').optional(),
+});
+
+export const iconConfigSchema = z.object({
+  type: z.enum([ICON_TYPES.IMAGE, ICON_TYPES.ICON]),
+  value: z.string().min(1, 'Icon value is required'),
 });
 
 export const serviceSchema = z.object({
@@ -10,7 +16,7 @@ export const serviceSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500, 'Description must be less than 500 characters'),
   url: z.string().url('Must be a valid URL'),
   categoryId: z.string().min(1, 'Category is required'),
-  icon: z.string().optional(),
+  icon: iconConfigSchema.optional(),
   active: z.boolean(),
 });
 

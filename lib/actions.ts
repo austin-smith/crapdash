@@ -7,10 +7,8 @@ import { ZodError } from 'zod';
 import { readConfig, writeConfig } from './db';
 import { categorySchema, serviceSchema } from './validations';
 import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
-import { IMAGE_TYPE_ERROR, isAllowedImageMime } from './image-constants';
+import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
 import type { Category, Service, ActionResult, CategoryFormData, ServiceFormData, ServiceCreateData } from './types';
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
   try {
@@ -30,7 +28,7 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return { success: false, errors: [{ field: 'icon', message: 'File too large. Maximum size is 2MB.' }] };
+      return { success: false, errors: [{ field: 'icon', message: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` }] };
     }
 
     const ext = path.extname(file.name).toLowerCase();

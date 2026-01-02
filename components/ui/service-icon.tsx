@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import type { Service } from '@/lib/types';
+import { ICON_TYPES, type Service } from '@/lib/types';
+import { CategoryIcon } from './category-icon';
 
 interface ServiceIconProps {
   service: Service;
@@ -22,24 +23,47 @@ const SIZE_CLASSES = {
   lg: 'w-16 h-16 text-xl',
 };
 
+const LUCIDE_ICON_SIZE_CLASSES = {
+  sm: 'size-4',
+  md: 'size-6',
+  lg: 'size-8',
+};
+
 export function ServiceIcon({ service, size = 'md', className, cacheKey }: ServiceIconProps) {
   const sizeClass = SIZE_CLASSES[size];
 
-  // If service has an icon, display it
+  // If service has an icon, display it based on type
   if (service.icon) {
-    const iconUrl = `/api/${service.icon}`;
-    const iconSrc = cacheKey ? `${iconUrl}?v=${cacheKey}` : iconUrl;
-    return (
-      <div className={cn('relative flex-shrink-0 rounded-lg overflow-hidden', sizeClass, className)}>
-        <Image
-          src={iconSrc}
-          alt={`${service.name} icon`}
-          fill
-          className="object-cover"
-          unoptimized
-        />
-      </div>
-    );
+    if (service.icon.type === ICON_TYPES.IMAGE) {
+      const iconUrl = `/api/${service.icon.value}`;
+      const iconSrc = cacheKey ? `${iconUrl}?v=${cacheKey}` : iconUrl;
+      return (
+        <div className={cn('relative flex-shrink-0 rounded-lg overflow-hidden', sizeClass, className)}>
+          <Image
+            src={iconSrc}
+            alt={`${service.name} icon`}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+      );
+    }
+
+    if (service.icon.type === ICON_TYPES.ICON) {
+      const lucideSize = LUCIDE_ICON_SIZE_CLASSES[size];
+      return (
+        <div
+          className={cn(
+            'flex-shrink-0 rounded-lg flex items-center justify-center bg-muted',
+            sizeClass,
+            className
+          )}
+        >
+          <CategoryIcon name={service.icon.value} className={lucideSize} />
+        </div>
+      );
+    }
   }
 
   // Fallback: Show first letter with category-based color
