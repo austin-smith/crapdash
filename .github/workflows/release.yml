@@ -37,7 +37,15 @@ jobs:
 
       - name: Create artifact zip
         run: |
-          zip -r "crapdash-${{ github.ref_name }}.zip" .next public node_modules package.json pnpm-lock.yaml next.config.ts
+          # Package only the standalone output
+          zip -r "crapdash-${{ github.ref_name }}.zip" \
+            .next/standalone \
+            .next/static \
+            .next/required-server-files.json \
+            public \
+            package.json \
+            pnpm-lock.yaml \
+            next.config.ts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
