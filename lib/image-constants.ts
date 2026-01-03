@@ -1,3 +1,5 @@
+export const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
 const IMAGE_TYPE_MAP = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',

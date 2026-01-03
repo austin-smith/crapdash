@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
-import { IMAGE_ACCEPT, IMAGE_TYPE_ERROR, IMAGE_TYPE_LABEL, isAllowedImageMime } from '@/lib/image-constants';
+import { IMAGE_ACCEPT, IMAGE_TYPE_ERROR, IMAGE_TYPE_LABEL, MAX_FILE_SIZE, isAllowedImageMime } from '@/lib/image-constants';
 
 interface IconUploadProps {
   value?: string;
@@ -13,8 +13,6 @@ interface IconUploadProps {
   onClear: () => void;
   cacheKey?: number;
 }
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey }: IconUploadProps) {
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +26,15 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
     return null;
   }, [pendingFile]);
 
+  // Revoke object URLs to avoid leaking memory when files change or component unmounts
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -36,13 +43,15 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setError('File too large. Maximum size is 2MB.');
+      setError(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     // Validate file type
     if (!isAllowedImageMime(file.type)) {
       setError(IMAGE_TYPE_ERROR);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -111,10 +120,18 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
                 Remove
               </Button>
             )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {IMAGE_TYPE_LABEL} (max 2MB)
+            {IMAGE_TYPE_LABEL} (max {MAX_FILE_SIZE / 1024 / 1024}MB)
           </p>
         </div>
       </div>
@@ -125,15 +142,6 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
           {error}
         </div>
       )}
-
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        onChange={handleFileSelect}
-        className="hidden"
-      />
     </div>
   );
 }

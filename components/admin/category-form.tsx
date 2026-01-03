@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
-import { CategoryIcon, isValidIconName, resolveIconName } from '@/components/ui/category-icon';
+import { Field, FieldLabel, FieldError } from '@/components/ui/field';
+import { IconPicker } from './icon-picker';
+import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createCategory, updateCategory } from '@/lib/actions';
-import type { Category } from '@/lib/types';
+import { ICON_TYPES, type Category, type IconConfig } from '@/lib/types';
 
 interface CategoryFormProps {
   category?: Category;
@@ -18,25 +18,31 @@ interface CategoryFormProps {
 
 export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProps) {
   const [name, setName] = useState(category?.name || '');
-  const [icon, setIcon] = useState(category?.icon || '');
+  const [icon, setIcon] = useState<IconConfig | undefined>(category?.icon);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const iconIsValid = icon ? isValidIconName(icon) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
 
-    // Validate icon before submitting
-    if (icon && !isValidIconName(icon)) {
-      setErrors({ icon: `"${icon}" is not a valid Lucide icon name` });
-      setIsSubmitting(false);
-      return;
+    // Validate and resolve icon before submitting
+    let finalIcon: IconConfig | undefined = icon;
+    if (icon) {
+      if (icon.type === ICON_TYPES.ICON) {
+        const resolved = resolveLucideIconName(icon.value);
+        if (!resolved) {
+          setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
+          setIsSubmitting(false);
+          return;
+        }
+        finalIcon = { type: ICON_TYPES.ICON, value: resolved };
+      }
+      // Emoji type: no validation needed, just pass through
     }
 
-    const data = { name, icon: icon || undefined };
+    const data = { name, icon: finalIcon };
     const result = category
       ? await updateCategory(category.id, data)
       : await createCategory(data);
@@ -44,7 +50,7 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     if (result.success) {
       toast.success(category ? 'Category updated' : 'Category created');
       setName('');
-      setIcon('');
+      setIcon(undefined);
       onSuccess?.();
     } else {
       const errorMap: Record<string, string> = {};
@@ -70,36 +76,15 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
         {errors.name && <FieldError>{errors.name}</FieldError>}
       </Field>
 
-      <Field data-invalid={!!errors.icon || iconIsValid === false}>
+      <Field data-invalid={!!errors.icon}>
         <FieldLabel>Icon</FieldLabel>
-        <Input
+        <IconPicker
           value={icon}
-          onChange={(e) => setIcon(e.target.value)}
-          placeholder="Enter icon name"
+          onValueChange={setIcon}
+          onClear={() => setIcon(undefined)}
+          allowImage={false}
           disabled={isSubmitting}
         />
-        {icon && iconIsValid && (
-          <div className="flex items-center gap-3 pt-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-muted">
-              <CategoryIcon name={icon} className="h-6 w-6" />
-            </div>
-            <span className="text-sm text-muted-foreground font-mono">{resolveIconName(icon)}</span>
-          </div>
-        )}
-        {icon && !iconIsValid && (
-          <p className="text-sm text-destructive">&ldquo;{icon}&rdquo; is not a valid icon name</p>
-        )}
-        <FieldDescription>
-          <a
-            href="https://lucide.dev/icons"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            Browse icons at lucide.dev
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </FieldDescription>
         {errors.icon && <FieldError>{errors.icon}</FieldError>}
       </Field>
 

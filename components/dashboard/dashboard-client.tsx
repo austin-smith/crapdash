@@ -96,7 +96,6 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
   }, []);
 
   const handleEditSuccess = useCallback(() => {
-    toast.success('Service updated');
     setEditModalOpen(false);
     setEditingService(null);
     setCacheKey((k) => k + 1);

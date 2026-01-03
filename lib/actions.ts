@@ -7,10 +7,11 @@ import { ZodError } from 'zod';
 import { readConfig, writeConfig } from './db';
 import { categorySchema, serviceSchema } from './validations';
 import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
-import { IMAGE_TYPE_ERROR, isAllowedImageMime } from './image-constants';
-import type { Category, Service, ActionResult, CategoryFormData, ServiceFormData, ServiceCreateData } from './types';
+import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
+import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type ServiceFormData, type ServiceCreateData } from './types';
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+// Restrict service IDs to slug-safe characters to prevent path traversal when writing files
+const SERVICE_ID_PATTERN = /^[a-z0-9-]+$/i;
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
   try {
@@ -25,12 +26,20 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
       return { success: false, errors: [{ field: 'icon', message: 'No service ID provided' }] };
     }
 
+    // Prevent path traversal and other unsafe values
+    if (!SERVICE_ID_PATTERN.test(serviceId)) {
+      return {
+        success: false,
+        errors: [{ field: 'icon', message: 'Invalid service ID format' }],
+      };
+    }
+
     if (!isAllowedImageMime(file.type)) {
       return { success: false, errors: [{ field: 'icon', message: IMAGE_TYPE_ERROR }] };
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return { success: false, errors: [{ field: 'icon', message: 'File too large. Maximum size is 2MB.' }] };
+      return { success: false, errors: [{ field: 'icon', message: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` }] };
     }
 
     const ext = path.extname(file.name).toLowerCase();
@@ -38,20 +47,37 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
       return { success: false, errors: [{ field: 'icon', message: 'Invalid file extension.' }] };
     }
 
-    // Delete old icon if exists
-    await deleteServiceIcon(serviceId);
-
-    // Save new file
     const filename = `${serviceId}${ext}`;
     const filePath = getIconFilePath(filename);
+    const iconsDir = path.dirname(filePath);
+    const tempPath = path.join(iconsDir, `${filename}.tmp-${crypto.randomUUID()}`);
 
     // Ensure icons directory exists (may not exist if volume is mounted)
-    const iconsDir = path.dirname(filePath);
     await fs.mkdir(iconsDir, { recursive: true });
+
+    // Record any existing icons for this service (to clean after successful write)
+    const existingIcons = await fs.readdir(iconsDir).catch(() => []);
+    const oldIconFiles = existingIcons.filter((file) => {
+      const nameWithoutExt = path.parse(file).name;
+      return nameWithoutExt === serviceId && file !== filename;
+    });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await fs.writeFile(filePath, buffer);
+    
+    try {
+      await fs.writeFile(tempPath, buffer);
+      await fs.rename(tempPath, filePath);
+    } catch (error) {
+      // Clean up temp file on failure
+      await fs.unlink(tempPath).catch(() => {});
+      throw error;
+    }
+
+    // Remove previous icons only after the new one is safely in place
+    for (const oldFile of oldIconFiles) {
+      await fs.unlink(path.join(iconsDir, oldFile)).catch(() => {});
+    }
 
     const iconPath = `icons/${filename}`;
 
@@ -188,7 +214,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
     if (idExists) {
       return {
         success: false,
-        errors: [{ field: 'name', message: 'A service with this name already exists' }],
+        errors: [{ field: 'name', message: 'A service with this slug already exists' }],
       };
     }
 
@@ -243,6 +269,7 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       };
     }
 
+    const previousService = config.services[index];
     const updatedService: Service = {
       ...config.services[index],
       ...validated,
@@ -250,6 +277,14 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
 
     config.services[index] = updatedService;
     await writeConfig(config);
+
+    // If we are moving away from an image icon, remove the old image file after the config persists
+    if (
+      previousService.icon?.type === ICON_TYPES.IMAGE &&
+      validated.icon?.type !== ICON_TYPES.IMAGE
+    ) {
+      await deleteServiceIcon(id);
+    }
 
     revalidatePath('/');
     revalidatePath('/admin');

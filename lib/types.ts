@@ -18,10 +18,23 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
   expandOnHover: false,
 };
 
+export const ICON_TYPES = {
+  IMAGE: 'image',
+  ICON: 'icon',
+  EMOJI: 'emoji',
+} as const;
+
+export type IconType = typeof ICON_TYPES[keyof typeof ICON_TYPES];
+
+export interface IconConfig {
+  type: IconType;
+  value: string;
+}
+
 export interface Category {
   id: string;
   name: string;
-  icon?: string;
+  icon?: IconConfig;
 }
 
 export interface Service {
@@ -30,7 +43,7 @@ export interface Service {
   description: string;
   url: string;
   categoryId: string;
-  icon?: string;
+  icon?: IconConfig;
   active: boolean;
 }
 

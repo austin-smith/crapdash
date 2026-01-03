@@ -15,11 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
-import { IconUpload } from './icon-upload';
+import { IconPicker } from './icon-picker';
 import { CategoryIcon } from '@/components/ui/category-icon';
+import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createService, updateService, uploadServiceIcon } from '@/lib/actions';
 import { slugify } from '@/lib/utils';
-import type { Category, Service } from '@/lib/types';
+import { ICON_TYPES, type Category, type IconConfig, type Service } from '@/lib/types';
 
 interface ServiceFormProps {
   service?: Service;
@@ -34,7 +35,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
   const [description, setDescription] = useState(service?.description || '');
   const [url, setUrl] = useState(service?.url || '');
   const [categoryId, setCategoryId] = useState(service?.categoryId || '');
-  const [icon, setIcon] = useState(service?.icon || '');
+  const [icon, setIcon] = useState<IconConfig | undefined>(service?.icon);
   const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
   const [active, setActive] = useState(service?.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,13 +59,26 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     setErrors({});
 
     const id = service?.id || serviceId;
-    let iconPath = icon || undefined;
+    let finalIcon: IconConfig | undefined = icon;
 
-    // Upload pending icon file if exists
+    // Validate non-image selections first
+    if (icon?.type === ICON_TYPES.ICON) {
+      const resolvedName = resolveLucideIconName(icon.value);
+      if (!resolvedName) {
+        setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
+        setIsSubmitting(false);
+        return;
+      }
+      finalIcon = { type: ICON_TYPES.ICON, value: resolvedName };
+    } else if (icon?.type === ICON_TYPES.EMOJI) {
+      finalIcon = icon;
+    }
+
+    // Upload any pending image file (selecting the Image tab implies intent to use it)
     if (pendingIconFile) {
       const uploadedPath = await uploadIcon(pendingIconFile, id);
       if (uploadedPath) {
-        iconPath = uploadedPath;
+        finalIcon = { type: ICON_TYPES.IMAGE, value: uploadedPath };
       } else {
         setErrors({ icon: 'Failed to upload icon' });
         setIsSubmitting(false);
@@ -72,7 +86,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       }
     }
 
-    const formData = { name, description, url, categoryId, icon: iconPath, active };
+    const formData = { name, description, url, categoryId, icon: finalIcon, active };
     const result = service
       ? await updateService(service.id, formData)
       : await createService({ id: serviceId, ...formData });
@@ -83,7 +97,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       setDescription('');
       setUrl('');
       setCategoryId('');
-      setIcon('');
+      setIcon(undefined);
       setPendingIconFile(null);
       setActive(true);
       onSuccess?.();
@@ -150,7 +164,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
             {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 <span className="flex items-center gap-2">
-                  <CategoryIcon name={category.icon} className="size-4" />
+                  <CategoryIcon icon={category.icon} className="size-4" />
                   {category.name}
                 </span>
               </SelectItem>
@@ -160,24 +174,24 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         {errors.categoryId && <FieldError>{errors.categoryId}</FieldError>}
       </Field>
 
-      <Field>
+      <Field data-invalid={!!errors.icon}>
         <FieldLabel>Icon</FieldLabel>
-        <IconUpload
+        <IconPicker
           value={icon}
+          allowImage={true}
           pendingFile={pendingIconFile}
-          onFileSelect={(file) => setPendingIconFile(file)}
-          onClear={() => {
-            setIcon('');
-            setPendingIconFile(null);
-          }}
+          onValueChange={setIcon}
+          onFileSelect={setPendingIconFile}
+          onClear={() => setIcon(undefined)}
           cacheKey={cacheKey}
         />
+        {errors.icon && <FieldError>{errors.icon}</FieldError>}
       </Field>
 
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
           <Label htmlFor="active">Active</Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Inactive services are hidden on the dashboard
           </p>
         </div>

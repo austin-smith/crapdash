@@ -28,7 +28,7 @@ export function CategoryLayout({ category, services, layout, expandOnHover, onEd
           !isGrid && 'pb-2 border-b border-border/50'
         )}
       >
-        <CategoryIcon name={category.icon} className="h-4 w-4 opacity-70" />
+        <CategoryIcon icon={category.icon} className="h-4 w-4 opacity-70" />
         {category.name}
       </h2>
       <div
