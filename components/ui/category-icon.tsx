@@ -2,9 +2,13 @@
 
 import * as LucideIcons from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ICON_TYPES, type IconConfig } from '@/lib/types';
 
 interface CategoryIconProps extends LucideProps {
-  name?: string;
+  icon?: IconConfig;
+  /** Override emoji text size (e.g., 'text-2xl') */
+  emojiClassName?: string;
 }
 
 // Known non-icon exports to exclude
@@ -46,10 +50,28 @@ export function isValidIconName(name: string): boolean {
   return resolveIconName(name) !== null;
 }
 
-export function CategoryIcon({ name, ...props }: CategoryIconProps) {
-  const resolved = name ? resolveIconName(name) : null;
-  if (!resolved) return null;
+export function CategoryIcon({ icon, className, emojiClassName, ...props }: CategoryIconProps) {
+  if (!icon) return null;
+
+  if (icon.type === ICON_TYPES.EMOJI) {
+    return (
+      <span 
+        className={cn('inline-flex items-center justify-center leading-none', emojiClassName || 'text-base', className)} 
+        role="img" 
+        aria-label="category icon"
+      >
+        {icon.value}
+      </span>
+    );
+  }
   
-  const Icon = LucideIcons[resolved as keyof typeof LucideIcons] as React.ComponentType<LucideProps>;
-  return <Icon {...props} />;
+  if (icon.type === ICON_TYPES.ICON) {
+    const resolved = resolveIconName(icon.value);
+    if (!resolved) return null;
+    
+    const Icon = LucideIcons[resolved as keyof typeof LucideIcons] as React.ComponentType<LucideProps>;
+    return <Icon className={className} {...props} />;
+  }
+  
+  return null;
 }

@@ -5,9 +5,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldError } from '@/components/ui/field';
-import { LucideIconPicker, resolveIconName } from './lucide-icon-picker';
+import { IconPicker } from './icon-picker';
+import { resolveIconName } from '@/components/ui/category-icon';
 import { createCategory, updateCategory } from '@/lib/actions';
-import type { Category } from '@/lib/types';
+import { ICON_TYPES, type Category, type IconConfig } from '@/lib/types';
 
 interface CategoryFormProps {
   category?: Category;
@@ -17,7 +18,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProps) {
   const [name, setName] = useState(category?.name || '');
-  const [icon, setIcon] = useState(category?.icon || '');
+  const [icon, setIcon] = useState<IconConfig | undefined>(category?.icon);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,18 +28,21 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     setErrors({});
 
     // Validate and resolve icon before submitting
-    let resolvedIcon: string | undefined;
+    let finalIcon: IconConfig | undefined = icon;
     if (icon) {
-      const resolved = resolveIconName(icon);
-      if (!resolved) {
-        setErrors({ icon: `"${icon}" is not a valid Lucide icon name` });
-        setIsSubmitting(false);
-        return;
+      if (icon.type === ICON_TYPES.ICON) {
+        const resolved = resolveIconName(icon.value);
+        if (!resolved) {
+          setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
+          setIsSubmitting(false);
+          return;
+        }
+        finalIcon = { type: ICON_TYPES.ICON, value: resolved };
       }
-      resolvedIcon = resolved;
+      // Emoji type: no validation needed, just pass through
     }
 
-    const data = { name, icon: resolvedIcon };
+    const data = { name, icon: finalIcon };
     const result = category
       ? await updateCategory(category.id, data)
       : await createCategory(data);
@@ -46,7 +50,7 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     if (result.success) {
       toast.success(category ? 'Category updated' : 'Category created');
       setName('');
-      setIcon('');
+      setIcon(undefined);
       onSuccess?.();
     } else {
       const errorMap: Record<string, string> = {};
@@ -74,9 +78,11 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
 
       <Field data-invalid={!!errors.icon}>
         <FieldLabel>Icon</FieldLabel>
-        <LucideIconPicker
+        <IconPicker
           value={icon}
-          onChange={setIcon}
+          onValueChange={setIcon}
+          onClear={() => setIcon(undefined)}
+          allowImage={false}
           disabled={isSubmitting}
         />
         {errors.icon && <FieldError>{errors.icon}</FieldError>}

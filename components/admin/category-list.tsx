@@ -86,21 +86,21 @@ export function CategoryList({ categories, services, onEdit, onDeleted }: Catego
     return (
       <Card className={isOverlay ? 'shadow-lg ring-2 ring-primary/20' : ''}>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              {category.icon ? (
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg border bg-muted/50 shrink-0">
-                  <CategoryIcon name={category.icon} className="h-5 w-5" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg border border-dashed bg-muted/30 shrink-0">
-                  <span className="text-xs text-muted-foreground">—</span>
-                </div>
-              )}
-              <CardTitle className="text-lg">{category.name}</CardTitle>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                {category.icon ? (
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg border bg-muted/50 shrink-0">
+                    <CategoryIcon icon={category.icon} className="h-6 w-6" emojiClassName="text-3xl" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg border border-dashed bg-muted/30 shrink-0">
+                    <span className="text-xs text-muted-foreground">—</span>
+                  </div>
+                )}
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+              </div>
+              <Badge variant="secondary">{serviceCount} services</Badge>
             </div>
-            <Badge variant="secondary">{serviceCount} services</Badge>
-          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">

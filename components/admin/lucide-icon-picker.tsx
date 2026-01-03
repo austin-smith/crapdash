@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { CategoryIcon, getIconNames, isValidIconName, resolveIconName } from '@/components/ui/category-icon';
+import { ICON_TYPES } from '@/lib/types';
 
 interface LucideIconPickerProps {
   value: string;
@@ -90,7 +91,7 @@ export function LucideIconPicker({
           >
             {resolvedValue ? (
               <span className="flex items-center gap-2">
-                <CategoryIcon name={resolvedValue} className="h-4 w-4" />
+                <CategoryIcon icon={{ type: ICON_TYPES.ICON, value: resolvedValue }} className="h-4 w-4" />
                 <span className="font-mono text-xs">{resolvedValue}</span>
               </span>
             ) : (
@@ -124,7 +125,7 @@ export function LucideIconPicker({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-[10px] px-2 py-1">
-                          No icon
+                          Remove icon
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -139,7 +140,7 @@ export function LucideIconPicker({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="flex items-center justify-center w-full h-full">
-                              <CategoryIcon name={iconName} className="size-5" />
+                              <CategoryIcon icon={{ type: ICON_TYPES.ICON, value: iconName }} className="size-5" />
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="font-mono text-[10px] px-2 py-1">

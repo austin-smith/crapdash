@@ -130,7 +130,7 @@ export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey 
         )}
         <CardHeader className="flex-1">
           <div className={cn('flex items-start gap-3', !service.active && 'opacity-60')}>
-            <ServiceIcon service={service} size="md" className={cn(!service.active && 'grayscale')} cacheKey={cacheKey} />
+            <ServiceIcon service={service} size="md" emojiClassName="text-3xl" className={cn(!service.active && 'grayscale')} cacheKey={cacheKey} />
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg flex items-center gap-2">
                 <span className="truncate">{service.name}</span>
@@ -189,7 +189,7 @@ export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey 
           return (
             <section key={category.id}>
               <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3 pb-2 border-b border-border/50">
-                <CategoryIcon name={category.icon} className="h-4 w-4 opacity-70" />
+                <CategoryIcon icon={category.icon} className="h-4 w-4 opacity-70" />
                 {category.name}
                 <span className="text-xs">({categoryServices.length})</span>
               </h3>

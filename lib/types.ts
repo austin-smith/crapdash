@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
 export const ICON_TYPES = {
   IMAGE: 'image',
   ICON: 'icon',
+  EMOJI: 'emoji',
 } as const;
 
 export type IconType = typeof ICON_TYPES[keyof typeof ICON_TYPES];
@@ -33,7 +34,7 @@ export interface IconConfig {
 export interface Category {
   id: string;
   name: string;
-  icon?: string;
+  icon?: IconConfig;
 }
 
 export interface Service {

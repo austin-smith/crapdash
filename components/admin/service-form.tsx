@@ -162,7 +162,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
             {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 <span className="flex items-center gap-2">
-                  <CategoryIcon name={category.icon} className="size-4" />
+                  <CategoryIcon icon={category.icon} className="size-4" />
                   {category.name}
                 </span>
               </SelectItem>
@@ -188,7 +188,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
           <Label htmlFor="active">Active</Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Inactive services are hidden on the dashboard
           </p>
         </div>

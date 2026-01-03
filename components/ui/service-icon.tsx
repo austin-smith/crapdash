@@ -12,6 +12,8 @@ interface ServiceIconProps {
   service: Service;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  /** Override emoji text size (e.g., 'text-3xl') */
+  emojiClassName?: string;
   cacheKey?: number;
 }
 
@@ -34,16 +36,41 @@ const LUCIDE_ICON_SIZE_CLASSES = {
   lg: 'size-8',
 };
 
-export function ServiceIcon({ service, size = 'md', className, cacheKey }: ServiceIconProps) {
+const EMOJI_SIZE_CLASSES = {
+  sm: 'text-lg',
+  md: 'text-2xl',
+  lg: 'text-4xl',
+};
+
+export function ServiceIcon({ service, size = 'md', className, emojiClassName, cacheKey }: ServiceIconProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const sizeClass = SIZE_CLASSES[size];
   const lucideSize = LUCIDE_ICON_SIZE_CLASSES[size];
+  const emojiSize = EMOJI_SIZE_CLASSES[size];
   const isInvalidLucide =
     service.icon?.type === ICON_TYPES.ICON && !resolveIconName(service.icon.value);
 
   // If service has an icon, display it based on type
   if (service.icon) {
+    // Emoji icon
+    if (service.icon.type === ICON_TYPES.EMOJI) {
+      return (
+        <div
+          className={cn(
+            'flex-shrink-0 rounded-lg flex items-center justify-center bg-muted',
+            sizeClass,
+            className
+          )}
+        >
+          <span className={cn('leading-none', emojiClassName || emojiSize)} role="img" aria-label={`${service.name} icon`}>
+            {service.icon.value}
+          </span>
+        </div>
+      );
+    }
+
+    // Image icon
     if (service.icon.type === ICON_TYPES.IMAGE && !loadFailed) {
       const iconUrl = `/api/${service.icon.value}`;
       const iconSrc = cacheKey ? `${iconUrl}?v=${cacheKey}` : iconUrl;
@@ -63,7 +90,7 @@ export function ServiceIcon({ service, size = 'md', className, cacheKey }: Servi
       );
     }
 
-    // If the image fails to load or a Lucide icon was chosen, fall back to a Lucide glyph
+    // Lucide icon or fallback for failed image load
     if (service.icon.type === ICON_TYPES.ICON || loadFailed || isInvalidLucide) {
       const lucideName = loadFailed || isInvalidLucide ? 'ImageOff' : service.icon.value;
       const isFallback = loadFailed || isInvalidLucide;
@@ -80,7 +107,7 @@ export function ServiceIcon({ service, size = 'md', className, cacheKey }: Servi
             className
           )}
         >
-          <CategoryIcon name={lucideName} className={lucideSize} />
+          <CategoryIcon icon={{ type: ICON_TYPES.ICON, value: lucideName }} className={lucideSize} />
         </div>
       );
 

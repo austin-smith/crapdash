@@ -39,7 +39,7 @@ export function ServiceCard({ service, expandOnHover, cacheKey }: ServiceCardPro
       <Card size="sm" className="h-full hover:shadow-lg group-data-[state=open]/context:shadow-lg transition-shadow cursor-pointer">
         <CardHeader className="relative">
           <div className="flex items-start gap-3">
-            <ServiceIcon service={service} size="md" cacheKey={cacheKey} />
+            <ServiceIcon service={service} size="md" emojiClassName="text-3xl" cacheKey={cacheKey} />
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg line-clamp-1">{service.name}</CardTitle>
               <div className="grid grid-rows-[1fr] group-data-[expanded]:grid-rows-[3fr] group-data-[state=open]/context:grid-rows-[3fr] transition-[grid-template-rows] duration-300 ease-out">
