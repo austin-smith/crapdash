@@ -29,9 +29,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prune to production dependencies
-        run: pnpm prune --prod
-
       - name: Build
         run: pnpm build
 
