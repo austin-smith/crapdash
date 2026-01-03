@@ -275,16 +275,16 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       ...validated,
     };
 
-    // If we are moving away from an image icon, remove the old image file
+    config.services[index] = updatedService;
+    await writeConfig(config);
+
+    // If we are moving away from an image icon, remove the old image file after the config persists
     if (
       previousService.icon?.type === ICON_TYPES.IMAGE &&
       validated.icon?.type !== ICON_TYPES.IMAGE
     ) {
       await deleteServiceIcon(id);
     }
-
-    config.services[index] = updatedService;
-    await writeConfig(config);
 
     revalidatePath('/');
     revalidatePath('/admin');
