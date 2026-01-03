@@ -8,7 +8,7 @@ import { readConfig, writeConfig } from './db';
 import { categorySchema, serviceSchema } from './validations';
 import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
-import type { Category, Service, ActionResult, CategoryFormData, ServiceFormData, ServiceCreateData } from './types';
+import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type ServiceFormData, type ServiceCreateData } from './types';
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
   try {
@@ -258,10 +258,19 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       };
     }
 
+    const previousService = config.services[index];
     const updatedService: Service = {
       ...config.services[index],
       ...validated,
     };
+
+    // If we are moving away from an image icon, remove the old image file
+    if (
+      previousService.icon?.type === ICON_TYPES.IMAGE &&
+      validated.icon?.type !== ICON_TYPES.IMAGE
+    ) {
+      await deleteServiceIcon(id);
+    }
 
     config.services[index] = updatedService;
     await writeConfig(config);

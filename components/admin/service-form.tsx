@@ -73,8 +73,8 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       finalIcon = icon;
     }
 
-    // Only upload a pending image file if the user is keeping/choosing an image
-    if (pendingIconFile && (!icon || icon.type === ICON_TYPES.IMAGE)) {
+    // Upload any pending image file (selecting the Image tab implies intent to use it)
+    if (pendingIconFile) {
       const uploadedPath = await uploadIcon(pendingIconFile, id);
       if (uploadedPath) {
         finalIcon = { type: ICON_TYPES.IMAGE, value: uploadedPath };

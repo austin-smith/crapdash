@@ -6,9 +6,14 @@ export const iconConfigSchema = z.object({
   value: z.string().min(1, 'Icon value is required'),
 });
 
+// Categories only support Lucide or emoji; block image icons to avoid blank renders
+export const categoryIconSchema = iconConfigSchema.extend({
+  type: z.enum([ICON_TYPES.ICON, ICON_TYPES.EMOJI]),
+});
+
 export const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  icon: iconConfigSchema.optional(),
+  icon: categoryIconSchema.optional(),
 });
 
 export const serviceSchema = z.object({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
@@ -25,6 +25,15 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
     }
     return null;
   }, [pendingFile]);
+
+  // Revoke object URLs to avoid leaking memory when files change or component unmounts
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

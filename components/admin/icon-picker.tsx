@@ -43,6 +43,12 @@ export function IconPicker({
   const handleTypeChange = (newType: string) => {
     if (!newType) return;
     const type = newType as IconType;
+
+    // If moving away from the image tab, discard any pending upload
+    if (selectedTab === ICON_TYPES.IMAGE && type !== ICON_TYPES.IMAGE) {
+      onFileSelect?.(null);
+    }
+
     setSelectedTab(type);
   };
 
