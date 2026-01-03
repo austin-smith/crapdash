@@ -5,34 +5,34 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Computer } from 'lucide-react';
-import { SettingsIcon } from '@/components/ui/settings';
-import { SlidersHorizontalIcon } from '@/components/ui/sliders-horizontal';
-import { AnimateIcon } from '@/components/ui/animate-icon';
+import { SettingsIcon } from '@/components/ui/animated-icons/settings';
+import { SlidersHorizontalIcon } from '@/components/ui/animated-icons/sliders-horizontal';
+import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/layout/page-header';
+import { PageHeader } from '@/components/layout/header/page-header';
 import { CategoryLayout } from './category-layout';
-import { SearchBar } from './search-bar';
-import { SettingsDialog } from './settings-dialog';
-import { useSettings } from '@/hooks/use-settings';
+import { SearchBar } from '../layout/header/search-bar';
+import { PreferencesDialog } from '../layout/header/preferences-dialog';
+import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ServiceFormModal } from '@/components/admin/service-form-modal';
+import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
 import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
-import { LAYOUTS, type Category, type Service, type DashboardSettings } from '@/lib/types';
+import { LAYOUTS, type Category, type Service, type Preferences } from '@/lib/types';
 
 interface DashboardClientProps {
   categories: Category[];
   services: Service[];
-  initialSettings: Partial<DashboardSettings>;
+  initialSettings: Partial<Preferences>;
 }
 
 export function DashboardClient({ categories, services, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { settings, updateSetting } = useSettings({ initialSettings });
+  const { settings, updateSetting } = usePreferences({ initialSettings });
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -144,7 +144,7 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
           </TooltipTrigger>
           <TooltipContent side="bottom">Preferences</TooltipContent>
         </Tooltip>
-        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <PreferencesDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <Tooltip>
           <TooltipTrigger>
             <AnimateIcon animateOnHover>

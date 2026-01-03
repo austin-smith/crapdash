@@ -6,7 +6,7 @@ import { forwardRef, useCallback, useImperativeHandle, useRef, useEffect } from 
 import { motion, useAnimation } from 'motion/react';
 
 import { cn } from '@/lib/utils';
-import { useAnimateIconContext } from '@/components/ui/animate-icon';
+import { useAnimateIconContext } from '@/components/ui/animated-icons/animate-icon';
 
 export interface SlidersHorizontalIconHandle {
   startAnimation: () => void;

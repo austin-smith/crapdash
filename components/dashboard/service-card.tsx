@@ -2,7 +2,7 @@
 
 import { useRef, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ServiceIcon } from '@/components/ui/service-icon';
+import { ServiceIcon } from '@/components/common/icons/service-icon';
 import type { Service } from '@/lib/types';
 
 interface ServiceCardProps {

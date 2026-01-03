@@ -1,6 +1,6 @@
 'use client';
 
-import { usePlatformDefault } from '@/components/platform/platform-provider';
+import { usePlatformDefault } from '@/components/providers/platform-provider';
 import { MODIFIER_CMD, type ModifierPlatform } from '@/lib/platform';
 
 function getModifierLabel(platform: ModifierPlatform): string {

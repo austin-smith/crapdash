@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
 import { getCategories, getActiveServices } from '@/lib/db';
 import { DashboardClient } from '@/components/dashboard/dashboard-client';
-import { SETTINGS_COOKIE_NAME } from '@/lib/types';
-import { parseSettings } from '@/lib/settings';
+import { PREFERENCES_COOKIE_NAME } from '@/lib/types';
+import { parsePreferences } from '@/lib/preferences';
 
 export default async function Page() {
   const [categories, services, cookieStore] = await Promise.all([
@@ -11,8 +11,8 @@ export default async function Page() {
     cookies(),
   ]);
 
-  const settingsValue = cookieStore.get(SETTINGS_COOKIE_NAME)?.value;
-  const initialSettings = parseSettings(settingsValue);
+  const settingsValue = cookieStore.get(PREFERENCES_COOKIE_NAME)?.value;
+  const initialSettings = parsePreferences(settingsValue);
 
   return (
     <DashboardClient

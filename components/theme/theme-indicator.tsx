@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Theme, THEME_META } from "./theme-config"
+import { Theme, THEME_META } from "../../lib/theme-config"
 
 interface ThemeIndicatorProps extends React.ComponentProps<"div"> {
   theme: Theme

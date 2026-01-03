@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getCategories, getServices } from '@/lib/db';
 import { AdminClient } from '@/components/admin/admin-client';
-import { SETTINGS_COOKIE_NAME } from '@/lib/types';
-import { parseSettings } from '@/lib/settings';
+import { PREFERENCES_COOKIE_NAME } from '@/lib/types';
+import { parsePreferences } from '@/lib/preferences';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +18,8 @@ export default async function AdminPage() {
     cookies(),
   ]);
 
-  const settingsValue = cookieStore.get(SETTINGS_COOKIE_NAME)?.value;
-  const initialSettings = parseSettings(settingsValue);
+  const settingsValue = cookieStore.get(PREFERENCES_COOKIE_NAME)?.value;
+  const initialSettings = parsePreferences(settingsValue);
 
   return (
     <AdminClient

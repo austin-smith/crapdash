@@ -12,21 +12,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { THEMES, THEME_META } from '@/components/theme/theme-config';
+import { THEMES, THEME_META } from '@/lib/theme-config';
 import { Kbd, ModKbd } from '@/components/ui/kbd';
-import { LAYOUTS, type DashboardSettings } from '@/lib/types';
+import { LAYOUTS, type Preferences } from '@/lib/types';
 
-interface SettingsDialogProps {
-  settings: DashboardSettings;
-  onSettingChange: <K extends keyof DashboardSettings>(
+interface PreferencesDialogProps {
+  settings: Preferences;
+  onSettingChange: <K extends keyof Preferences>(
     key: K,
-    value: DashboardSettings[K]
+    value: Preferences[K]
   ) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function SettingsDialog({ settings, onSettingChange, open, onOpenChange }: SettingsDialogProps) {
+export function PreferencesDialog({ settings, onSettingChange, open, onOpenChange }: PreferencesDialogProps) {
   const { theme, setTheme } = useTheme();
 
   return (

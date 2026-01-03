@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
-import { IconPicker } from './icon-picker';
+import { IconPicker } from '../icon-pickers/icon-picker';
 import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createCategory, updateCategory } from '@/lib/actions';
 import { slugify } from '@/lib/utils';

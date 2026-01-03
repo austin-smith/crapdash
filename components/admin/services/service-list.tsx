@@ -6,15 +6,15 @@ import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CornerRibbon } from '@/components/ui/corner-ribbon';
-import { CategoryIcon } from '@/components/ui/category-icon';
+import { CategoryIcon } from '@/components/common/icons/category-icon';
 import { SortableList, SortableItem } from '@/components/ui/sortable';
 import { Pencil, Trash2, ExternalLink } from 'lucide-react';
-import { ServiceIcon } from '@/components/ui/service-icon';
-import { DeleteConfirmDialog } from './delete-confirm-dialog';
+import { ServiceIcon } from '@/components/common/icons/service-icon';
+import { DeleteConfirmDialog } from '../delete-confirm-dialog';
 import { deleteService, reorderServices } from '@/lib/actions';
 import type { Category, Service } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ServiceCardContext } from '@/components/shared/service-card-context';
+import { ServiceCardContext } from '@/components/common/context-menus/service-card-context';
 
 interface ServiceListProps {
   services: Service[];

@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { CategoryIcon } from '@/components/ui/category-icon';
+import { CategoryIcon } from '@/components/common/icons/category-icon';
 import { getLucideIconNames, isValidLucideIconName, resolveLucideIconName } from '@/lib/lucide-icons';
 import { ICON_TYPES } from '@/lib/types';
 

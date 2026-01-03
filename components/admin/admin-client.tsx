@@ -5,36 +5,36 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageHeader } from '@/components/layout/page-header';
+import { PageHeader } from '@/components/layout/header/page-header';
 import { Plus, FolderOpen, Computer } from 'lucide-react';
-import { ArrowLeftIcon } from '@/components/ui/arrow-left';
-import { AnimateIcon } from '@/components/ui/animate-icon';
-import { SlidersHorizontalIcon } from '@/components/ui/sliders-horizontal';
+import { ArrowLeftIcon } from '@/components/ui/animated-icons/arrow-left';
+import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
+import { SlidersHorizontalIcon } from '@/components/ui/animated-icons/sliders-horizontal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { SettingsDialog } from '@/components/dashboard/settings-dialog';
-import { useSettings } from '@/hooks/use-settings';
+import { PreferencesDialog } from '@/components/layout/header/preferences-dialog';
+import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { SearchBar } from '@/components/dashboard/search-bar';
-import { CategoryFormModal } from '@/components/admin/category-form-modal';
-import { ServiceFormModal } from '@/components/admin/service-form-modal';
+import { SearchBar } from '@/components/layout/header/search-bar';
+import { CategoryFormModal } from '@/components/admin/categories/category-form-modal';
+import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
-import { DownloadIcon } from '@/components/ui/download';
-import type { Category, Service, DashboardSettings } from '@/lib/types';
+import { DownloadIcon } from '@/components/ui/animated-icons/download';
+import type { Category, Service, Preferences } from '@/lib/types';
 
 // Dynamic imports to avoid SSR for drag-and-drop components
-const CategoryList = dynamic(() => import('@/components/admin/category-list').then(m => m.CategoryList), { ssr: false });
-const ServiceList = dynamic(() => import('@/components/admin/service-list').then(m => m.ServiceList), { ssr: false });
+const CategoryList = dynamic(() => import('@/components/admin/categories/category-list').then(m => m.CategoryList), { ssr: false });
+const ServiceList = dynamic(() => import('@/components/admin/services/service-list').then(m => m.ServiceList), { ssr: false });
 
 interface AdminClientProps {
   categories: Category[];
   services: Service[];
-  initialSettings: Partial<DashboardSettings>;
+  initialSettings: Partial<Preferences>;
 }
 
 export function AdminClient({ categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
-  const { settings, updateSetting } = useSettings({ initialSettings });
+  const { settings, updateSetting } = usePreferences({ initialSettings });
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | undefined>();
@@ -165,7 +165,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           </TooltipTrigger>
           <TooltipContent side="bottom">Preferences</TooltipContent>
         </Tooltip>
-        <SettingsDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <PreferencesDialog settings={settings} onSettingChange={updateSetting} open={settingsOpen} onOpenChange={setSettingsOpen} />
         <Tooltip>
           <TooltipTrigger>
             <AnimateIcon animateOnHover asChild>

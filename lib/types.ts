@@ -6,14 +6,14 @@ export const LAYOUTS = {
 export type DashboardLayout = typeof LAYOUTS[keyof typeof LAYOUTS];
 
 export const DEFAULT_LAYOUT: DashboardLayout = LAYOUTS.ROWS;
-export const SETTINGS_COOKIE_NAME = 'dashboard-settings';
+export const PREFERENCES_COOKIE_NAME = 'preferences';
 
-export interface DashboardSettings {
+export interface Preferences {
   layout: DashboardLayout;
   expandOnHover: boolean;
 }
 
-export const DEFAULT_SETTINGS: DashboardSettings = {
+export const DEFAULT_PREFERENCES: Preferences = {
   layout: DEFAULT_LAYOUT,
   expandOnHover: false,
 };

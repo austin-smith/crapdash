@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { ThemeIndicator } from './theme-indicator';
-import { Theme, getNextTheme } from './theme-config';
+import { Theme, getNextTheme } from '../../lib/theme-config';
 
 export function ThemeShortcut() {
   const { theme, setTheme } = useTheme();

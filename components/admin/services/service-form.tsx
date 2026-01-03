@@ -15,8 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
-import { IconPicker } from './icon-picker';
-import { CategoryIcon } from '@/components/ui/category-icon';
+import { IconPicker } from '../icon-pickers/icon-picker';
+import { CategoryIcon } from '@/components/common/icons/category-icon';
 import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createService, updateService, uploadServiceIcon } from '@/lib/actions';
 import { slugify } from '@/lib/utils';
