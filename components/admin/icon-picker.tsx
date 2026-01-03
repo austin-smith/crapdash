@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ImageIcon, Shapes, Smile } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Hexagon, ImageIcon, Smile } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { IconUpload } from './icon-upload';
 import { LucideIconPicker } from './lucide-icon-picker';
 import { EmojiPicker } from './emoji-picker';
@@ -97,59 +97,51 @@ function IconPickerInner({
   const emojiValue = value?.type === ICON_TYPES.EMOJI ? value.value : '';
 
   return (
-    <div className="space-y-4">
-      {/* Type Toggle */}
-      <ToggleGroup
-        type="single"
-        value={iconType}
-        onValueChange={handleTypeChange}
-        variant="outline"
-        disabled={disabled}
-      >
+    <Tabs value={iconType} onValueChange={handleTypeChange} className="gap-4">
+      <TabsList className="h-9 p-1">
         {allowImage && (
-          <ToggleGroupItem value={ICON_TYPES.IMAGE} className="flex-1 gap-2">
-            <ImageIcon className="size-4" />
+          <TabsTrigger value={ICON_TYPES.IMAGE} disabled={disabled} className="px-3">
+            <ImageIcon />
             Image
-          </ToggleGroupItem>
+          </TabsTrigger>
         )}
-        <ToggleGroupItem value={ICON_TYPES.ICON} className="flex-1 gap-2">
-          <Shapes className="size-4" />
+        <TabsTrigger value={ICON_TYPES.ICON} disabled={disabled} className="px-3">
+          <Hexagon />
           Lucide
-        </ToggleGroupItem>
-        <ToggleGroupItem value={ICON_TYPES.EMOJI} className="flex-1 gap-2">
-          <Smile className="size-4" />
+        </TabsTrigger>
+        <TabsTrigger value={ICON_TYPES.EMOJI} disabled={disabled} className="px-3">
+          <Smile />
           Emoji
-        </ToggleGroupItem>
-      </ToggleGroup>
+        </TabsTrigger>
+      </TabsList>
 
-      {/* Image Upload */}
-      {allowImage && iconType === ICON_TYPES.IMAGE && onFileSelect && (
-        <IconUpload
-          value={imageValue}
-          pendingFile={pendingFile}
-          onFileSelect={handleImageFileSelect}
-          onClear={onClear}
-          cacheKey={cacheKey}
-        />
+      {allowImage && onFileSelect && (
+        <TabsContent value={ICON_TYPES.IMAGE}>
+          <IconUpload
+            value={imageValue}
+            pendingFile={pendingFile}
+            onFileSelect={handleImageFileSelect}
+            onClear={onClear}
+            cacheKey={cacheKey}
+          />
+        </TabsContent>
       )}
 
-      {/* Lucide Icon Picker */}
-      {iconType === ICON_TYPES.ICON && (
+      <TabsContent value={ICON_TYPES.ICON}>
         <LucideIconPicker
           value={lucideIconName}
           onChange={handleLucideIconChange}
           disabled={disabled}
         />
-      )}
+      </TabsContent>
 
-      {/* Emoji Picker */}
-      {iconType === ICON_TYPES.EMOJI && (
+      <TabsContent value={ICON_TYPES.EMOJI}>
         <EmojiPicker
           value={emojiValue}
           onChange={handleEmojiChange}
           disabled={disabled}
         />
-      )}
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }
