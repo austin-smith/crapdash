@@ -32,26 +32,28 @@ export function IconPicker({
   cacheKey,
   disabled,
 }: IconPickerProps) {
-  // Default to ICON type if images not allowed, otherwise IMAGE
-  const defaultType = allowImage ? ICON_TYPES.IMAGE : ICON_TYPES.ICON;
-  const [iconType, setIconType] = useState<IconType>(value?.type ?? defaultType);
+  // Default tab when no value is set
+  const defaultTab = allowImage ? ICON_TYPES.IMAGE : ICON_TYPES.ICON;
+  
+  // Local state only used as fallback when value is undefined (user switching tabs)
+  const [selectedTab, setSelectedTab] = useState<IconType>(defaultTab);
+  
+  // Derive the active type: value?.type is authoritative, fallback to local selection
+  const iconType = value?.type ?? selectedTab;
 
   const handleTypeChange = (newType: string) => {
     if (!newType) return;
     const type = newType as IconType;
-    setIconType(type);
+    setSelectedTab(type);
     // Clear the current value when switching types
     onFileSelect?.(null);
     onClear();
   };
 
-  // Wrap onFileSelect to also notify parent about icon type
   const handleImageFileSelect = (file: File | null) => {
     onFileSelect?.(file);
-    if (file) {
-      // Signal that we're using an image type icon (actual path will be set after upload)
-      onValueChange({ type: ICON_TYPES.IMAGE, value: '' });
-    }
+    // Don't set an intermediate value here, the form tracks pendingIconFile
+    // and creates a valid IconConfig with the real path after upload succeeds
   };
 
   const handleLucideIconChange = (iconName: string) => {

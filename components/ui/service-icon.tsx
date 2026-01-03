@@ -90,7 +90,7 @@ export function ServiceIcon({ service, size = 'md', className, emojiClassName, c
             className={cn('object-cover transition-opacity', !isLoaded && 'opacity-0')}
             unoptimized
             onError={() => imageKey !== null && setFailedKey(imageKey)}
-            onLoadingComplete={() => imageKey !== null && setLoadedKey(imageKey)}
+            onLoad={() => imageKey !== null && setLoadedKey(imageKey)}
           />
         </div>
       );

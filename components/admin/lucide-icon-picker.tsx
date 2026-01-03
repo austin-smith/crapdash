@@ -182,4 +182,3 @@ export function LucideIconPicker({
   );
 }
 
-export { isValidIconName, resolveIconName };
