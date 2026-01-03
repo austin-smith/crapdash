@@ -36,20 +36,18 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
       return { success: false, errors: [{ field: 'icon', message: 'Invalid file extension.' }] };
     }
 
-    // Delete old icon if exists
-    await deleteServiceIcon(serviceId);
-
-    // Save new file
     const filename = `${serviceId}${ext}`;
     const filePath = getIconFilePath(filename);
+    const iconsDir = path.dirname(filePath);
+    const tempPath = path.join(iconsDir, `${filename}.tmp-${crypto.randomUUID()}`);
 
     // Ensure icons directory exists (may not exist if volume is mounted)
-    const iconsDir = path.dirname(filePath);
     await fs.mkdir(iconsDir, { recursive: true });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await fs.writeFile(filePath, buffer);
+    await fs.writeFile(tempPath, buffer);
+    await fs.rename(tempPath, filePath);
 
     const iconPath = `icons/${filename}`;
 
@@ -186,7 +184,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
     if (idExists) {
       return {
         success: false,
-        errors: [{ field: 'name', message: 'A service with this name already exists' }],
+        errors: [{ field: 'name', message: 'A service with this slug already exists' }],
       };
     }
 
