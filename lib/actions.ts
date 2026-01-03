@@ -36,9 +36,6 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
       return { success: false, errors: [{ field: 'icon', message: 'Invalid file extension.' }] };
     }
 
-    // Delete any existing icon files for this service (handles extension changes, e.g., .png -> .jpg)
-    await deleteServiceIcon(serviceId);
-
     const filename = `${serviceId}${ext}`;
     const filePath = getIconFilePath(filename);
     const iconsDir = path.dirname(filePath);
@@ -46,6 +43,13 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
 
     // Ensure icons directory exists (may not exist if volume is mounted)
     await fs.mkdir(iconsDir, { recursive: true });
+
+    // Record any existing icons for this service (to clean after successful write)
+    const existingIcons = await fs.readdir(iconsDir).catch(() => []);
+    const oldIconFiles = existingIcons.filter((file) => {
+      const nameWithoutExt = path.parse(file).name;
+      return nameWithoutExt === serviceId && file !== filename;
+    });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -57,6 +61,11 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
       // Clean up temp file on failure
       await fs.unlink(tempPath).catch(() => {});
       throw error;
+    }
+
+    // Remove previous icons only after the new one is safely in place
+    for (const oldFile of oldIconFiles) {
+      await fs.unlink(path.join(iconsDir, oldFile)).catch(() => {});
     }
 
     const iconPath = `icons/${filename}`;

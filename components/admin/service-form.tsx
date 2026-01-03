@@ -60,18 +60,15 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     const id = service?.id || serviceId;
     let finalIcon: IconConfig | undefined = icon;
 
-    // Handle icon based on type
-    if (icon?.type === ICON_TYPES.IMAGE) {
-      // Upload pending icon file if exists
-      if (pendingIconFile) {
-        const uploadedPath = await uploadIcon(pendingIconFile, id);
-        if (uploadedPath) {
-          finalIcon = { type: ICON_TYPES.IMAGE, value: uploadedPath };
-        } else {
-          setErrors({ icon: 'Failed to upload icon' });
-          setIsSubmitting(false);
-          return;
-        }
+    // Handle icon based on type/pending file
+    if (pendingIconFile) {
+      const uploadedPath = await uploadIcon(pendingIconFile, id);
+      if (uploadedPath) {
+        finalIcon = { type: ICON_TYPES.IMAGE, value: uploadedPath };
+      } else {
+        setErrors({ icon: 'Failed to upload icon' });
+        setIsSubmitting(false);
+        return;
       }
     } else if (icon?.type === ICON_TYPES.ICON) {
       // Validate and resolve Lucide icon name
