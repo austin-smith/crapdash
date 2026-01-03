@@ -5,10 +5,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { ZodError } from 'zod';
 import { readConfig, writeConfig } from './db';
-import { categorySchema, serviceSchema, serviceCreateSchema, serviceIdSchema } from './validations';
+import { categorySchema, categoryCreateSchema, serviceSchema, serviceCreateSchema, serviceIdSchema } from './validations';
 import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
-import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type ServiceFormData, type ServiceCreateData } from './types';
+import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type CategoryCreateData, type ServiceFormData, type ServiceCreateData } from './types';
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
   try {
@@ -86,15 +86,21 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
   }
 }
 
-export async function createCategory(data: CategoryFormData): Promise<ActionResult<Category>> {
+export async function createCategory(data: CategoryCreateData): Promise<ActionResult<Category>> {
   try {
-    const validated = categorySchema.parse(data);
+    const validated = categoryCreateSchema.parse(data);
     const config = await readConfig();
 
-    const newCategory: Category = {
-      id: crypto.randomUUID(),
-      ...validated,
-    };
+    // Check for duplicate ID
+    const idExists = config.categories.some(c => c.id === validated.id);
+    if (idExists) {
+      return {
+        success: false,
+        errors: [{ field: 'name', message: 'A category with this slug already exists' }],
+      };
+    }
+
+    const newCategory: Category = validated;
 
     config.categories.push(newCategory);
     await writeConfig(config);

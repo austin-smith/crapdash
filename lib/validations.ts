@@ -2,10 +2,13 @@ import { z } from 'zod';
 import { ICON_TYPES } from './types';
 import { resolveLucideIconName } from './lucide-icons';
 
-export const serviceIdSchema = z.string().regex(
+export const slugSchema = z.string().regex(
   /^[a-z0-9-]+$/i,
-  'Service ID must use letters, numbers, or dashes'
+  'Slug must use letters, numbers, or dashes'
 );
+
+// Alias for backwards compatibility
+export const serviceIdSchema = slugSchema;
 
 const baseIconValue = z.string().trim().min(1, 'Icon value is required');
 
@@ -53,6 +56,10 @@ export const categoryIconSchema = z.discriminatedUnion('type', [
 export const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   icon: categoryIconSchema.optional(),
+});
+
+export const categoryCreateSchema = categorySchema.extend({
+  id: slugSchema,
 });
 
 export const serviceSchema = z.object({

@@ -53,6 +53,7 @@ export interface DashboardConfig {
 }
 
 export type CategoryFormData = Omit<Category, 'id'>;
+export type CategoryCreateData = Category;
 export type ServiceFormData = Omit<Service, 'id'>;
 export type ServiceCreateData = Service;
 

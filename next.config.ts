@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: packageJson.version,
   },
-  // Disable Next.js image optimization to avoid bundling native image deps (e.g., sharp)
-  images: {
-    unoptimized: true,
-  },
 };
 
 export default nextConfig;

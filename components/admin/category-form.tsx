@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FieldLabel, FieldError } from '@/components/ui/field';
+import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
 import { IconPicker } from './icon-picker';
 import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createCategory, updateCategory } from '@/lib/actions';
+import { slugify } from '@/lib/utils';
 import { ICON_TYPES, type Category, type IconConfig } from '@/lib/types';
 
 interface CategoryFormProps {
@@ -21,6 +22,9 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
   const [icon, setIcon] = useState<IconConfig | undefined>(category?.icon);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Generate slug from name for new categories
+  const categoryId = category?.id || slugify(name);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +46,10 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
       // Emoji type: no validation needed, just pass through
     }
 
-    const data = { name, icon: finalIcon };
+    const formData = { name, icon: finalIcon };
     const result = category
-      ? await updateCategory(category.id, data)
-      : await createCategory(data);
+      ? await updateCategory(category.id, formData)
+      : await createCategory({ id: categoryId, ...formData });
 
     if (result.success) {
       toast.success(category ? 'Category updated' : 'Category created');
@@ -73,6 +77,9 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
           placeholder="Enter category name"
           disabled={isSubmitting}
         />
+        {!category && categoryId && (
+          <FieldDescription className="font-mono">Slug: {categoryId}</FieldDescription>
+        )}
         {errors.name && <FieldError>{errors.name}</FieldError>}
       </Field>
 
