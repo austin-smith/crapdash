@@ -120,6 +120,14 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
                 Remove
               </Button>
             )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -134,15 +142,6 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
           {error}
         </div>
       )}
-
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        onChange={handleFileSelect}
-        className="hidden"
-      />
     </div>
   );
 }
