@@ -75,7 +75,7 @@ export function EmojiPicker({
         >
           {/* Search input - matches CommandInput wrapper */}
           <div className="p-1 pb-0">
-            <InputGroup className="bg-input/20 dark:bg-input/30 h-8!">
+            <InputGroup className="bg-input/20 dark:bg-input/30 h-8">
               <FrimousseEmojiPicker.Search
                 placeholder="Search emoji..."
                 className="w-full text-xs/relaxed outline-hidden disabled:cursor-not-allowed disabled:opacity-50 bg-transparent px-2"
