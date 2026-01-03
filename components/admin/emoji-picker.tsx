@@ -62,11 +62,12 @@ export function EmojiPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80 p-0" 
+        className="w-80 p-0 overflow-hidden max-h-[calc(100vh-8rem)]" 
         align="start" 
-        side="bottom" 
+        side="top" 
         sideOffset={4}
         collisionPadding={8}
+        avoidCollisions={false}
       >
         <FrimousseEmojiPicker.Root
           onEmojiSelect={(emoji) => handleEmojiSelect(emoji.emoji)}

@@ -31,7 +31,7 @@ interface LucideIconPickerProps {
   disabled?: boolean;
 }
 
-const MAX_RESULTS = 60;
+const PAGE_SIZE = 60;
 
 export function LucideIconPicker({
   value,
@@ -40,11 +40,12 @@ export function LucideIconPicker({
 }: LucideIconPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const allIcons = useMemo(() => getIconNames(), []);
 
   const filteredIcons = useMemo(() => {
     if (!search.trim()) {
-      return allIcons.slice(0, MAX_RESULTS);
+      return allIcons.slice(0, limit);
     }
     
     const query = search.toLowerCase();
@@ -61,8 +62,21 @@ export function LucideIconPicker({
       return a.localeCompare(b);
     });
     
-    return matches.slice(0, MAX_RESULTS);
+    return matches.slice(0, limit);
+  }, [search, allIcons, limit]);
+
+  const totalMatches = useMemo(() => {
+    if (!search.trim()) return allIcons.length;
+    const query = search.toLowerCase();
+    return allIcons.filter(name => name.toLowerCase().includes(query)).length;
   }, [search, allIcons]);
+
+  const hasMore = filteredIcons.length < totalMatches;
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setLimit(PAGE_SIZE);
+  };
 
   const handleSelect = (iconName: string) => {
     onChange(iconName);
@@ -100,14 +114,27 @@ export function LucideIconPicker({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="start" side="bottom" sideOffset={4} collisionPadding={8}>
-          <Command filter={() => 1}>
+        <PopoverContent
+          className="w-80 p-0 overflow-hidden max-h-[calc(100vh-8rem)] min-h-0"
+          align="start"
+          side="top"
+          sideOffset={4}
+          collisionPadding={8}
+          avoidCollisions={false}
+        >
+          <Command
+            filter={() => 1}
+            className="flex max-h-[calc(100vh-8rem)] min-h-0 flex-col"
+          >
             <CommandInput
               placeholder="Search icons..."
               value={search}
-              onValueChange={setSearch}
+              onValueChange={handleSearchChange}
             />
-            <CommandList className="h-72 overflow-y-auto p-2">
+            <CommandList
+              className="flex-1 min-h-0 overflow-y-auto p-2"
+              onWheel={(e) => e.stopPropagation()}
+            >
               <CommandEmpty>No icons found</CommandEmpty>
               <CommandGroup className="p-0">
                 <TooltipProvider delayDuration={300}>
@@ -153,12 +180,21 @@ export function LucideIconPicker({
                 </TooltipProvider>
               </CommandGroup>
             </CommandList>
-            {search && filteredIcons.length === MAX_RESULTS && (
-              <div className="px-3 py-2 text-xs text-muted-foreground border-t text-center">
-                Type more to narrow results...
+            <div className="px-3 py-2 border-t space-y-2">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>
+                  Showing {filteredIcons.length} of {totalMatches} icons
+                </span>
+                {hasMore && (
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+                  >
+                    Load more
+                  </button>
+                )}
               </div>
-            )}
-            <div className="px-3 py-2 border-t">
               <a
                 href="https://lucide.dev/icons"
                 target="_blank"
