@@ -5,13 +5,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { ZodError } from 'zod';
 import { readConfig, writeConfig } from './db';
-import { categorySchema, serviceSchema } from './validations';
+import { categorySchema, serviceSchema, serviceCreateSchema, serviceIdSchema } from './validations';
 import { deleteServiceIcon, isValidImageExtension, getIconFilePath } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
 import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type ServiceFormData, type ServiceCreateData } from './types';
-
-// Restrict service IDs to slug-safe characters to prevent path traversal when writing files
-const SERVICE_ID_PATTERN = /^[a-z0-9-]+$/i;
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
   try {
@@ -27,10 +24,11 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
     }
 
     // Prevent path traversal and other unsafe values
-    if (!SERVICE_ID_PATTERN.test(serviceId)) {
+    const idValidation = serviceIdSchema.safeParse(serviceId);
+    if (!idValidation.success) {
       return {
         success: false,
-        errors: [{ field: 'icon', message: 'Invalid service ID format' }],
+        errors: [{ field: 'icon', message: idValidation.error.issues[0]?.message ?? 'Invalid service ID format' }],
       };
     }
 
@@ -197,7 +195,7 @@ export async function deleteCategory(id: string): Promise<ActionResult<void>> {
 
 export async function createService(data: ServiceCreateData): Promise<ActionResult<Service>> {
   try {
-    const validated = serviceSchema.parse({ ...data, active: data.active ?? true });
+    const validated = serviceCreateSchema.parse({ ...data, active: data.active ?? true });
     const config = await readConfig();
 
     // Validate category exists
@@ -218,10 +216,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
       };
     }
 
-    const newService: Service = {
-      id: data.id,
-      ...validated,
-    };
+    const newService: Service = validated;
 
     config.services.push(newService);
     await writeConfig(config);
@@ -249,6 +244,14 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
 
 export async function updateService(id: string, data: ServiceFormData): Promise<ActionResult<Service>> {
   try {
+    const idValidation = serviceIdSchema.safeParse(id);
+    if (!idValidation.success) {
+      return {
+        success: false,
+        errors: [{ field: 'name', message: idValidation.error.issues[0]?.message ?? 'Invalid service ID format' }],
+      };
+    }
+
     const validated = serviceSchema.parse(data);
     const config = await readConfig();
 

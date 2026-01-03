@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { ICON_TYPES } from './types';
 import { resolveLucideIconName } from './lucide-icons';
 
+export const serviceIdSchema = z.string().regex(
+  /^[a-z0-9-]+$/i,
+  'Service ID must use letters, numbers, or dashes'
+);
+
 const baseIconValue = z.string().trim().min(1, 'Icon value is required');
 
 const imageIconSchema = z.object({
@@ -59,5 +64,10 @@ export const serviceSchema = z.object({
   active: z.boolean(),
 });
 
+export const serviceCreateSchema = serviceSchema.extend({
+  id: serviceIdSchema,
+});
+
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type ServiceInput = z.infer<typeof serviceSchema>;
+export type ServiceCreateInput = z.infer<typeof serviceCreateSchema>;
