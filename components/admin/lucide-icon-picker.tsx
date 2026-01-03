@@ -22,7 +22,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { CategoryIcon, getIconNames, isValidIconName, resolveIconName } from '@/components/ui/category-icon';
+import { CategoryIcon } from '@/components/ui/category-icon';
+import { getLucideIconNames, isValidLucideIconName, resolveLucideIconName } from '@/lib/lucide-icons';
 import { ICON_TYPES } from '@/lib/types';
 
 interface LucideIconPickerProps {
@@ -41,7 +42,7 @@ export function LucideIconPicker({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const allIcons = useMemo(() => getIconNames(), []);
+  const allIcons = useMemo(() => getLucideIconNames(), []);
 
   const filteredIcons = useMemo(() => {
     if (!search.trim()) {
@@ -89,8 +90,8 @@ export function LucideIconPicker({
     setSearch('');
   };
 
-  const resolvedValue = value ? resolveIconName(value) : null;
-  const isValid = value ? isValidIconName(value) : null;
+  const resolvedValue = value ? resolveLucideIconName(value) : null;
+  const isValid = value ? isValidLucideIconName(value) : null;
 
   return (
     <div className="space-y-3">

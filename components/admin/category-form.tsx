@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldError } from '@/components/ui/field';
 import { IconPicker } from './icon-picker';
-import { resolveIconName } from '@/components/ui/category-icon';
+import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createCategory, updateCategory } from '@/lib/actions';
 import { ICON_TYPES, type Category, type IconConfig } from '@/lib/types';
 
@@ -31,7 +31,7 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     let finalIcon: IconConfig | undefined = icon;
     if (icon) {
       if (icon.type === ICON_TYPES.ICON) {
-        const resolved = resolveIconName(icon.value);
+        const resolved = resolveLucideIconName(icon.value);
         if (!resolved) {
           setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
           setIsSubmitting(false);

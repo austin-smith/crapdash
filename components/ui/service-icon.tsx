@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ICON_TYPES, type Service } from '@/lib/types';
-import { CategoryIcon, resolveIconName } from './category-icon';
+import { CategoryIcon } from './category-icon';
+import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -49,7 +50,7 @@ export function ServiceIcon({ service, size = 'md', className, emojiClassName, c
   const lucideSize = LUCIDE_ICON_SIZE_CLASSES[size];
   const emojiSize = EMOJI_SIZE_CLASSES[size];
   const isInvalidLucide =
-    service.icon?.type === ICON_TYPES.ICON && !resolveIconName(service.icon.value);
+    service.icon?.type === ICON_TYPES.ICON && !resolveLucideIconName(service.icon.value);
   const imageKey =
     service.icon?.type === ICON_TYPES.IMAGE
       ? `${service.icon.value ?? ''}:${cacheKey ?? ''}`

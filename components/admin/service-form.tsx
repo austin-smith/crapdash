@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/select';
 import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui/field';
 import { IconPicker } from './icon-picker';
-import { CategoryIcon, resolveIconName } from '@/components/ui/category-icon';
+import { CategoryIcon } from '@/components/ui/category-icon';
+import { resolveLucideIconName } from '@/lib/lucide-icons';
 import { createService, updateService, uploadServiceIcon } from '@/lib/actions';
 import { slugify } from '@/lib/utils';
 import { ICON_TYPES, type Category, type IconConfig, type Service } from '@/lib/types';
@@ -62,7 +63,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
 
     // Validate non-image selections first
     if (icon?.type === ICON_TYPES.ICON) {
-      const resolvedName = resolveIconName(icon.value);
+      const resolvedName = resolveLucideIconName(icon.value);
       if (!resolvedName) {
         setErrors({ icon: `"${icon.value}" is not a valid Lucide icon name` });
         setIsSubmitting(false);
