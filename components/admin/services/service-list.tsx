@@ -131,16 +131,16 @@ export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey 
           </CornerRibbon>
         )}
         <CardHeader className="flex-1">
-          <div className={cn('flex items-start gap-3', !service.active && 'opacity-60')}>
+          <div className={cn('flex items-start gap-3 min-w-0', !service.active && 'opacity-60')}>
             <ServiceIcon service={service} size="md" emojiClassName="text-3xl" className={cn(!service.active && 'grayscale')} cacheKey={cacheKey} />
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <span className="truncate">{service.name}</span>
+              <CardTitle className="text-lg flex items-center gap-2 min-w-0">
+                <span className="flex-1 min-w-0 truncate">{service.name}</span>
                 <a
                   href={service.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLink className="h-4 w-4" />
