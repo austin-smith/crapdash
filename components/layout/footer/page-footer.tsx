@@ -9,7 +9,7 @@ export function PageFooter() {
       <div className="flex items-center gap-1 text-xs text-muted-foreground/60 font-mono bg-background/80 backdrop-blur-sm pl-1 pr-2 py-1 rounded">
         <Button variant="ghost" size="icon-xs" asChild>
           <a
-            href="https://github.com/crapshack/crapdash"
+            href="https://github.com/austin-smith/crapdash"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="View on GitHub"

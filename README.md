@@ -33,7 +33,7 @@ docker run -d \
   -p 2727:2727 \
   --mount type=bind,source=/path/to/data,target=/app/data \
   --restart=unless-stopped \
-  ghcr.io/crapshack/crapdash:latest
+  ghcr.io/austin-smith/crapdash:latest
 ```
 
 ### Docker Compose
@@ -41,7 +41,7 @@ docker run -d \
 ```yaml
 services:
   crapdash:
-    image: ghcr.io/crapshack/crapdash:latest
+    image: ghcr.io/austin-smith/crapdash:latest
     container_name: crapdash
     restart: unless-stopped
     ports:
@@ -54,7 +54,7 @@ services:
 
 Download and run the latest prebuilt bundle if you want a quick Node deploy without Docker.
 
-1) Download the latest release from the [Releases](https://github.com/crapshack/crapdash/releases) page and extract it where you want to run it.
+1) Download the latest release from the [Releases](https://github.com/austin-smith/crapdash/releases) page and extract it where you want to run it.
 2) Ensure the extracted `data/` directory is writable (config and uploads live there).
 3) Start the server:
 
