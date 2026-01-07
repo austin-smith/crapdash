@@ -6,6 +6,13 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { THEMES, THEME_META } from '@/lib/theme-config';
+import { APPEARANCES, APPEARANCE_META, type Appearance } from '@/lib/appearance-config';
 import { Kbd, ModKbd } from '@/components/ui/kbd';
 import { LAYOUTS, type Preferences } from '@/lib/types';
 
@@ -53,6 +61,28 @@ export function PreferencesDialog({ settings, onSettingChange, open, onOpenChang
               <LayoutPreviewOption value={LAYOUTS.ROWS} label="Rows" />
               <LayoutPreviewOption value={LAYOUTS.COLUMNS} label="Columns" />
             </ToggleGroup>
+          </div>
+
+          <Separator />
+
+          {/* Appearance Setting */}
+          <div className="flex items-center justify-between gap-4">
+            <Label className="text-muted-foreground">Appearance</Label>
+            <Select
+              value={settings.appearance}
+              onValueChange={(value) => onSettingChange('appearance', value as Appearance)}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {APPEARANCES.map((appearance) => (
+                  <SelectItem key={appearance} value={appearance}>
+                    {APPEARANCE_META[appearance].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Separator />

@@ -12,6 +12,7 @@ import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
 import { SlidersHorizontalIcon } from '@/components/ui/animated-icons/sliders-horizontal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PreferencesDialog } from '@/components/layout/header/preferences-dialog';
+import { AppearanceProvider } from '@/components/theme/appearance-provider';
 import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { SearchBar } from '@/components/layout/header/search-bar';
@@ -138,7 +139,7 @@ export function AdminClient({ categories: initialCategories, services: initialSe
   };
 
   return (
-    <>
+    <AppearanceProvider appearance={settings.appearance} onAppearanceChange={(appearance) => updateSetting('appearance', appearance)}>
       <PageHeader title="crapdash /admin">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <Tooltip>
@@ -291,6 +292,6 @@ export function AdminClient({ categories: initialCategories, services: initialSe
           cacheKey={refreshKey}
         />
       </main>
-    </>
+    </AppearanceProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { LAYOUTS, type Preferences } from '@/lib/types';
+import { APPEARANCES, type Appearance } from '@/lib/appearance-config';
 
 /**
  * Decode and validate preferences persisted in the cookie.
@@ -18,6 +19,10 @@ export function parsePreferences(cookieValue: string | undefined): Partial<Prefe
 
     if (typeof parsed.expandOnHover === 'boolean') {
       settings.expandOnHover = parsed.expandOnHover;
+    }
+
+    if (APPEARANCES.includes(parsed.appearance as Appearance)) {
+      settings.appearance = parsed.appearance;
     }
 
     return settings;

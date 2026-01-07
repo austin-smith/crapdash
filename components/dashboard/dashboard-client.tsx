@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/header/page-header';
 import { CategoryLayout } from './category-layout';
 import { SearchBar } from '../layout/header/search-bar';
 import { PreferencesDialog } from '../layout/header/preferences-dialog';
+import { AppearanceProvider } from '@/components/theme/appearance-provider';
 import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
@@ -129,7 +130,7 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
   }, [deletingService, router]);
 
   return (
-    <>
+    <AppearanceProvider appearance={settings.appearance} onAppearanceChange={(appearance) => updateSetting('appearance', appearance)}>
       <PageHeader title="crapdash">
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
         <Tooltip>
@@ -231,6 +232,6 @@ export function DashboardClient({ categories, services, initialSettings }: Dashb
         isDeleting={isDeleting}
         error={deleteError}
       />
-    </>
+    </AppearanceProvider>
   );
 }
