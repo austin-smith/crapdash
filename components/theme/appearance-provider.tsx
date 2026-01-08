@@ -44,7 +44,7 @@ export function AppearanceProvider({ children, appearance, onAppearanceChange }:
     } else {
       startTransition(() => setResolvedAppearance(appearance));
     }
-  }, [appearance, startTransition]);
+  }, [appearance]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -28,6 +28,10 @@ export const APPEARANCE_OPTION_META: Record<AppearanceSetting, { label: string }
   [RANDOM_APPEARANCE]: { label: 'Random' },
 };
 
+/**
+ * Returns a concrete appearance when the "random" option is selected.
+ * Used both server- and client-side to pick a stable, valid theme value at runtime.
+ */
 export function getRandomAppearance(): Appearance {
   const index = Math.floor(Math.random() * APPEARANCES.length);
   return APPEARANCES[index] ?? DEFAULT_APPEARANCE;

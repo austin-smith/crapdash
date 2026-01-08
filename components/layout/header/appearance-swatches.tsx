@@ -18,7 +18,7 @@ export function AppearanceSwatches({ appearance, isDark, className }: Appearance
       {COLOR_VARS.map((cssVar) => (
         <span
           key={cssVar}
-          aria-hidden
+          aria-hidden="true"
           className="size-2.5 rounded-full border border-border/50 shadow-[0_0_0_0.5px_rgba(0,0,0,0.08)]"
           style={{ background: `var(${cssVar})` }}
         />
