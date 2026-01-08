@@ -1,8 +1,17 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { readConfig } from '@/lib/db';
 import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { PREFERENCES_COOKIE_NAME } from '@/lib/types';
 import { parsePreferences } from '@/lib/preferences';
+import { getAppTitle } from '@/lib/utils';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await readConfig();
+  return {
+    title: getAppTitle(config.appTitle),
+  };
+}
 
 export default async function Page() {
   const [config, cookieStore] = await Promise.all([readConfig(), cookies()]);

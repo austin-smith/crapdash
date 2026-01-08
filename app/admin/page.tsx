@@ -2,14 +2,18 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { readConfig } from '@/lib/db';
 import { AdminClient } from '@/components/admin/admin-client';
-import { DEFAULT_APP_TITLE, PREFERENCES_COOKIE_NAME } from '@/lib/types';
+import { PREFERENCES_COOKIE_NAME } from '@/lib/types';
 import { parsePreferences } from '@/lib/preferences';
+import { getAppTitle } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: `${DEFAULT_APP_TITLE} /admin`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await readConfig();
+  return {
+    title: `${getAppTitle(config.appTitle)} /admin`,
+  };
+}
 
 export default async function AdminPage() {
   const [config, cookieStore] = await Promise.all([readConfig(), cookies()]);
