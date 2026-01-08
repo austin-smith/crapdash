@@ -1,5 +1,5 @@
 import { LAYOUTS, type Preferences } from '@/lib/types';
-import { APPEARANCES, type Appearance } from '@/lib/appearance-config';
+import { APPEARANCES, RANDOM_APPEARANCE, type Appearance, type AppearanceSetting } from '@/lib/appearance-config';
 
 /**
  * Decode and validate preferences persisted in the cookie.
@@ -21,8 +21,11 @@ export function parsePreferences(cookieValue: string | undefined): Partial<Prefe
       settings.expandOnHover = parsed.expandOnHover;
     }
 
-    if (APPEARANCES.includes(parsed.appearance as Appearance)) {
-      settings.appearance = parsed.appearance;
+    if (
+      parsed.appearance === RANDOM_APPEARANCE ||
+      APPEARANCES.includes(parsed.appearance as Appearance)
+    ) {
+      settings.appearance = parsed.appearance as AppearanceSetting;
     }
 
     return settings;

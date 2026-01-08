@@ -21,10 +21,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { THEMES, THEME_META } from '@/lib/theme-config';
-import { APPEARANCES, APPEARANCE_META, type Appearance } from '@/lib/appearance-config';
+import {
+  APPEARANCE_OPTION_META,
+  APPEARANCE_OPTIONS,
+  RANDOM_APPEARANCE,
+  type Appearance,
+  type AppearanceSetting,
+} from '@/lib/appearance-config';
 import { Kbd, ModKbd } from '@/components/ui/kbd';
 import { LAYOUTS, type Preferences } from '@/lib/types';
 import { AppearanceSwatches } from './appearance-swatches';
+import { Shuffle } from 'lucide-react';
 
 interface PreferencesDialogProps {
   settings: Preferences;
@@ -38,8 +45,12 @@ interface PreferencesDialogProps {
 
 export function PreferencesDialog({ settings, onSettingChange, open, onOpenChange }: PreferencesDialogProps) {
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const [defaultAppearance, ...otherAppearances] = APPEARANCES;
   const isDark = resolvedTheme === 'dark';
+  const [defaultAppearance] = APPEARANCE_OPTIONS;
+  const randomAppearance = RANDOM_APPEARANCE;
+  const otherAppearanceOptions = APPEARANCE_OPTIONS.filter(
+    (appearance) => appearance !== defaultAppearance && appearance !== randomAppearance
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,7 +85,7 @@ export function PreferencesDialog({ settings, onSettingChange, open, onOpenChang
             <Label className="text-muted-foreground">Appearance</Label>
             <Select
               value={settings.appearance}
-              onValueChange={(value) => onSettingChange('appearance', value as Appearance)}
+              onValueChange={(value) => onSettingChange('appearance', value as AppearanceSetting)}
             >
               <SelectTrigger className="w-52">
                 <SelectValue />
@@ -82,19 +93,26 @@ export function PreferencesDialog({ settings, onSettingChange, open, onOpenChang
               <SelectContent>
                 <SelectItem key={defaultAppearance} value={defaultAppearance}>
                   <div className="flex items-center gap-2">
-                    <AppearanceSwatches appearance={defaultAppearance} isDark={isDark} />
-                    <span>{APPEARANCE_META[defaultAppearance].label}</span>
+                    <AppearanceSwatches appearance={defaultAppearance as Appearance} isDark={isDark} />
+                    <span>{APPEARANCE_OPTION_META[defaultAppearance].label}</span>
                   </div>
                 </SelectItem>
                 <SelectSeparator />
-                {otherAppearances.map((appearance) => (
+                {otherAppearanceOptions.map((appearance) => (
                   <SelectItem key={appearance} value={appearance}>
                     <div className="flex items-center gap-2">
-                      <AppearanceSwatches appearance={appearance} isDark={isDark} />
-                      <span>{APPEARANCE_META[appearance].label}</span>
+                      <AppearanceSwatches appearance={appearance as Appearance} isDark={isDark} />
+                      <span>{APPEARANCE_OPTION_META[appearance].label}</span>
                     </div>
                   </SelectItem>
                 ))}
+                <SelectSeparator />
+                <SelectItem key={randomAppearance} value={randomAppearance}>
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="size-3.5 text-muted-foreground" />
+                    <span>{APPEARANCE_OPTION_META[randomAppearance].label}</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

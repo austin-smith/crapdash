@@ -1,4 +1,4 @@
-import { type Appearance, DEFAULT_APPEARANCE } from './appearance-config';
+import { type AppearanceSetting, DEFAULT_APPEARANCE } from './appearance-config';
 
 export const LAYOUTS = {
   ROWS: 'rows',
@@ -13,7 +13,7 @@ export const PREFERENCES_COOKIE_NAME = 'preferences';
 export interface Preferences {
   layout: DashboardLayout;
   expandOnHover: boolean;
-  appearance: Appearance;
+  appearance: AppearanceSetting;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {

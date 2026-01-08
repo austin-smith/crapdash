@@ -9,7 +9,7 @@ import { PlatformProvider } from "@/components/providers/platform-provider";
 import { platformFromUserAgent } from "@/lib/platform";
 import { parsePreferences } from "@/lib/preferences";
 import { PREFERENCES_COOKIE_NAME } from "@/lib/types";
-import { DEFAULT_APPEARANCE } from "@/lib/appearance-config";
+import { DEFAULT_APPEARANCE, RANDOM_APPEARANCE, getRandomAppearance } from "@/lib/appearance-config";
 import "./globals.css";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -46,7 +46,9 @@ export default async function RootLayout({
     .slice(1)
     .join("=");
   const initialPreferences = parsePreferences(prefValue);
-  const initialAppearance = initialPreferences.appearance ?? DEFAULT_APPEARANCE;
+  const appearanceSetting = initialPreferences.appearance ?? DEFAULT_APPEARANCE;
+  const initialAppearance =
+    appearanceSetting === RANDOM_APPEARANCE ? getRandomAppearance() : appearanceSetting;
 
   return (
     <html

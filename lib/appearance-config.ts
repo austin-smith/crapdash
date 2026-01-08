@@ -7,7 +7,10 @@ export const APPEARANCE_META = {
   perpetuity: { label: 'Perpetuity' },
 } as const;
 
+export const RANDOM_APPEARANCE = 'random' as const;
+
 export type Appearance = keyof typeof APPEARANCE_META;
+export type AppearanceSetting = Appearance | typeof RANDOM_APPEARANCE;
 
 export const DEFAULT_APPEARANCE: Appearance = 'default';
 
@@ -17,3 +20,15 @@ export const APPEARANCES: Appearance[] = [
     .filter((key) => key !== DEFAULT_APPEARANCE)
     .sort(),
 ] as Appearance[];
+
+export const APPEARANCE_OPTIONS: AppearanceSetting[] = [...APPEARANCES, RANDOM_APPEARANCE];
+
+export const APPEARANCE_OPTION_META: Record<AppearanceSetting, { label: string }> = {
+  ...APPEARANCE_META,
+  [RANDOM_APPEARANCE]: { label: 'Random' },
+};
+
+export function getRandomAppearance(): Appearance {
+  const index = Math.floor(Math.random() * APPEARANCES.length);
+  return APPEARANCES[index] ?? DEFAULT_APPEARANCE;
+}
