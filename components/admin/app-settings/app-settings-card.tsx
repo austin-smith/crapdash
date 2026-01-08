@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { uploadAppLogo, updateAppSettings } from '@/lib/actions';
-import { DEFAULT_APP_TITLE, ICON_TYPES, type IconConfig, type ActionResult } from '@/lib/types';
+import { DEFAULT_APP_TITLE, ICON_TYPES, type IconConfig } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface AppSettingsCardProps {
@@ -30,33 +30,77 @@ interface AppSettingsCardProps {
 export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCardProps) {
   const [title, setTitle] = useState(appTitle?.trim() || DEFAULT_APP_TITLE);
   const [logo, setLogo] = useState<IconConfig | undefined>(appLogo);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [removeLogo, setRemoveLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLogoSaving, setIsLogoSaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasChanges = useMemo(() => {
+  const hasTitleChanges = useMemo(() => {
     const currentTitle = title?.trim() || '';
     const savedTitle = appTitle?.trim() || DEFAULT_APP_TITLE;
-    const titleChanged = currentTitle !== savedTitle;
-    const logoChanged = pendingFile !== null || removeLogo;
-    return titleChanged || logoChanged;
-  }, [appTitle, pendingFile, removeLogo, title]);
+    return currentTitle !== savedTitle;
+  }, [appTitle, title]);
+
+  const persistLogoChange = async ({
+    file,
+    remove,
+  }: {
+    file?: File;
+    remove?: boolean;
+  }) => {
+    if (isLogoSaving || (!file && !remove)) return;
+    setIsLogoSaving(true);
+
+    try {
+      let nextLogoToPersist: IconConfig | null;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadResult = await uploadAppLogo(formData);
+        if (!uploadResult.success) {
+          toast.error(uploadResult.errors[0]?.message ?? 'Failed to upload logo');
+          return;
+        }
+
+        nextLogoToPersist = { type: ICON_TYPES.IMAGE, value: uploadResult.data };
+      } else {
+        nextLogoToPersist = null;
+      }
+
+      const result = await updateAppSettings({ appLogo: nextLogoToPersist });
+
+      if (!result.success) {
+        toast.error(result.errors[0]?.message ?? 'Failed to save logo');
+        return;
+      }
+
+      const nextLogo = result.data.appLogo;
+      setLogo(nextLogo);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      toast.success(remove ? 'Logo removed' : 'Logo updated');
+      onChange?.(result.data.appTitle, nextLogo ?? undefined);
+    } finally {
+      setIsLogoSaving(false);
+    }
+  };
 
   const handleLogoClick = () => {
+    if (isLogoSaving) return;
     fileInputRef.current?.click();
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLogoSaving) return;
     const file = e.target.files?.[0];
     if (file) {
-      setPendingFile(file);
-      setRemoveLogo(false);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(URL.createObjectURL(file));
+      void persistLogoChange({ file });
     }
   };
 
@@ -64,45 +108,25 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
     setShowRemoveConfirm(true);
   };
 
-  const handleConfirmRemove = () => {
-    setPendingFile(null);
-    setPreviewUrl(null);
-    setLogo(undefined);
-    setRemoveLogo(true);
+  const handleConfirmRemove = async () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     setShowRemoveConfirm(false);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    await persistLogoChange({ remove: true });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (isSaving || !hasTitleChanges) return;
 
     setIsSaving(true);
 
-    let nextLogoToPersist: IconConfig | null | undefined;
-
-    if (pendingFile) {
-      const formData = new FormData();
-      formData.append('file', pendingFile);
-
-      const uploadResult = await uploadAppLogo(formData);
-      if (!uploadResult.success) {
-        toast.error(uploadResult.errors[0]?.message ?? 'Failed to upload logo');
-        setIsSaving(false);
-        return;
-      }
-
-      nextLogoToPersist = { type: ICON_TYPES.IMAGE, value: uploadResult.data };
-    } else if (removeLogo) {
-      nextLogoToPersist = null;
-    }
-
     const titleToPersist = title.trim();
-    const result: ActionResult<{ appTitle?: string; appLogo?: IconConfig }> = await updateAppSettings({
+    const result = await updateAppSettings({
       appTitle: titleToPersist.length > 0 && titleToPersist !== DEFAULT_APP_TITLE ? titleToPersist : null,
-      appLogo: nextLogoToPersist,
     });
 
     if (!result.success) {
@@ -112,16 +136,11 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
     }
 
     const nextTitle = result.data.appTitle;
-    const nextLogo = result.data.appLogo;
 
-    setLogo(nextLogo);
-    setPendingFile(null);
-    setPreviewUrl(null);
-    setRemoveLogo(false);
     setTitle(nextTitle?.trim() || DEFAULT_APP_TITLE);
 
-    onChange?.(nextTitle, nextLogo ?? undefined);
-    toast.success('Saved');
+    onChange?.(nextTitle, result.data.appLogo ?? undefined);
+    toast.success('Title saved');
     setIsSaving(false);
   };
 
@@ -185,12 +204,12 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
               onChange={(e) => setTitle(e.target.value)}
               placeholder={DEFAULT_APP_TITLE}
               maxLength={100}
-              disabled={isSaving}
+              disabled={isSaving || isLogoSaving}
               className="flex-1 sm:flex-none sm:w-48"
             />
 
-            {hasChanges && (
-              <Button type="submit" disabled={isSaving} className="h-9">
+            {hasTitleChanges && (
+              <Button type="submit" disabled={isSaving || isLogoSaving} className="h-9">
                 {isSaving ? 'Saving...' : 'Save'}
               </Button>
             )}

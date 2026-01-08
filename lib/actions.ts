@@ -129,14 +129,16 @@ export async function updateAppSettings(data: AppSettingsInput): Promise<ActionR
       nextConfig.appTitle = trimmed || undefined;
     }
 
-    if ('appLogo' in validated) {
-      if (validated.appLogo === null) {
+    const appLogoProvided = Object.hasOwn(data, 'appLogo');
+    if (appLogoProvided) {
+      const incomingLogo = validated.appLogo;
+      if (incomingLogo === null) {
         nextConfig.appLogo = undefined;
         if (previousAppLogoPath) {
           await deleteAppLogo(previousAppLogoPath);
         }
-      } else {
-        nextConfig.appLogo = validated.appLogo;
+      } else if (incomingLogo !== undefined) {
+        nextConfig.appLogo = incomingLogo;
       }
     }
 
