@@ -9,6 +9,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -36,6 +37,7 @@ interface PreferencesDialogProps {
 
 export function PreferencesDialog({ settings, onSettingChange, open, onOpenChange }: PreferencesDialogProps) {
   const { theme, setTheme } = useTheme();
+  const [defaultAppearance, ...otherAppearances] = APPEARANCES;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +78,11 @@ export function PreferencesDialog({ settings, onSettingChange, open, onOpenChang
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {APPEARANCES.map((appearance) => (
+                <SelectItem key={defaultAppearance} value={defaultAppearance}>
+                  {APPEARANCE_META[defaultAppearance].label}
+                </SelectItem>
+                <SelectSeparator />
+                {otherAppearances.map((appearance) => (
                   <SelectItem key={appearance} value={appearance}>
                     {APPEARANCE_META[appearance].label}
                   </SelectItem>
