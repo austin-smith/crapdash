@@ -86,6 +86,75 @@ export const appSettingsSchema = z.object({
   appLogo: imageIconSchema.nullable().optional(),
 });
 
+const importAppTitleSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z
+    .string()
+    .trim()
+    .min(1, 'App title is required')
+    .max(30, 'App title must be less than 30 characters')
+    .optional()
+);
+
+const importAppLogoSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  imageIconSchema.optional()
+);
+
+const serviceImportSchema = serviceCreateSchema.extend({
+  active: z.boolean().optional().default(true),
+});
+
+export const dashboardConfigImportSchema = z
+  .object({
+    appTitle: importAppTitleSchema,
+    appLogo: importAppLogoSchema,
+    categories: z.array(categoryCreateSchema),
+    services: z.array(serviceImportSchema),
+  })
+  .strict()
+  .superRefine((config, ctx) => {
+    const categoryIndexById = new Map<string, number>();
+    const serviceIndexById = new Map<string, number>();
+
+    for (const [index, category] of config.categories.entries()) {
+      const existingIndex = categoryIndexById.get(category.id);
+      if (existingIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate category id "${category.id}"`,
+          path: ['categories', index, 'id'],
+        });
+      } else {
+        categoryIndexById.set(category.id, index);
+      }
+    }
+
+    const categoryIds = new Set(config.categories.map((category) => category.id));
+
+    for (const [index, service] of config.services.entries()) {
+      const existingIndex = serviceIndexById.get(service.id);
+      if (existingIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate service id "${service.id}"`,
+          path: ['services', index, 'id'],
+        });
+      } else {
+        serviceIndexById.set(service.id, index);
+      }
+
+      if (!categoryIds.has(service.categoryId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Service references unknown category "${service.categoryId}"`,
+          path: ['services', index, 'categoryId'],
+        });
+      }
+    }
+  });
+
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type ServiceInput = z.infer<typeof serviceSchema>;
 export type ServiceCreateInput = z.infer<typeof serviceCreateSchema>;
+export type DashboardConfigImportInput = z.infer<typeof dashboardConfigImportSchema>;

@@ -1,14 +1,36 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ZodError } from 'zod';
+import { revalidatePath } from 'next/cache';
+import { collectConfigImportWarnings } from './config-import';
 import { readConfig, writeConfig } from './db';
-import { appSettingsSchema, categorySchema, categoryCreateSchema, serviceSchema, serviceCreateSchema, serviceIdSchema } from './validations';
+import {
+  appSettingsSchema,
+  categorySchema,
+  categoryCreateSchema,
+  dashboardConfigImportSchema,
+  serviceSchema,
+  serviceCreateSchema,
+  serviceIdSchema,
+} from './validations';
 import { deleteAppLogo, deleteServiceIcon, getAppLogoFilename, getIconFilePath, isValidImageExtension } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
-import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type CategoryCreateData, type ServiceFormData, type ServiceCreateData, type IconConfig } from './types';
+import {
+  ICON_TYPES,
+  type Category,
+  type Service,
+  type ActionResult,
+  type CategoryFormData,
+  type CategoryCreateData,
+  type ServiceFormData,
+  type ServiceCreateData,
+  type IconConfig,
+  type ImportConfigResult,
+} from './types';
+
+const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
 
 function validateImageFile(file: File, fieldName: string): { success: false; errors: { field: string; message: string }[] } | null {
   if (!isAllowedImageMime(file.type)) {
@@ -49,6 +71,13 @@ async function writeIconFile(file: File, filename: string, baseNameForCleanup: s
   }
 
   return `icons/${filename}`;
+}
+
+function mapValidationIssues(error: ZodError): Array<{ field: string; message: string }> {
+  return error.issues.map((issue) => ({
+    field: issue.path.join('.') || 'general',
+    message: issue.message,
+  }));
 }
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
@@ -106,6 +135,92 @@ export async function uploadAppLogo(formData: FormData): Promise<ActionResult<st
   } catch (error) {
     console.error('Upload app logo error:', error);
     return { success: false, errors: [{ field: 'appLogo', message: 'Failed to upload file' }] };
+  }
+}
+
+export async function importConfig(formData: FormData): Promise<ActionResult<ImportConfigResult>> {
+  try {
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'No file provided' }],
+      };
+    }
+
+    if (file.size === 0) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'File is empty' }],
+      };
+    }
+
+    if (file.size > MAX_CONFIG_IMPORT_SIZE) {
+      return {
+        success: false,
+        errors: [{
+          field: 'file',
+          message: `File too large. Maximum size is ${MAX_CONFIG_IMPORT_SIZE / 1024 / 1024}MB.`,
+        }],
+      };
+    }
+
+    const filename = file.name.toLowerCase();
+    if (!filename.endsWith('.json')) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'Config import requires a .json file' }],
+      };
+    }
+
+    const raw = await file.text();
+    if (!raw.trim()) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'File is empty' }],
+      };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'Invalid JSON file' }],
+      };
+    }
+
+    const validation = dashboardConfigImportSchema.safeParse(parsed);
+    if (!validation.success) {
+      return {
+        success: false,
+        errors: mapValidationIssues(validation.error),
+      };
+    }
+
+    const nextConfig = validation.data;
+    const warnings = await collectConfigImportWarnings(nextConfig);
+
+    await writeConfig(nextConfig);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      data: {
+        warnings,
+        config: nextConfig,
+      },
+    };
+  } catch (error) {
+    console.error('Import config error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to import configuration' }],
+    };
   }
 }
 
