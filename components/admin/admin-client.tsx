@@ -8,6 +8,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/header/page-header';
 import { ArrowLeftIcon } from '@/components/ui/animated-icons/arrow-left';
 import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
@@ -32,10 +40,12 @@ import { CategoryFormModal } from '@/components/admin/categories/category-form-m
 import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { DownloadIcon } from '@/components/ui/animated-icons/download';
+import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
 import { UploadIcon } from '@/components/ui/animated-icons/upload';
 import { importConfig } from '@/lib/actions';
 import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
+import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
 
 // Dynamic imports to avoid SSR for drag-and-drop components
@@ -70,6 +80,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const adminTitle = `${(appTitleState?.trim() || DEFAULT_APP_TITLE)} /admin`;
 
   useKeyboardShortcuts([
@@ -242,28 +253,39 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
       <AppearanceProvider appearance={settings.appearance} onAppearanceChange={(appearance) => updateSetting('appearance', appearance)}>
       <PageHeader title={adminTitle} appLogo={appLogoState}>
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <AnimateIcon animateOnHover>
-              <Button variant="outline" size="icon-lg" onClick={openImportPicker} disabled={isImporting}>
-                <UploadIcon size={18} />
+        <DropdownMenu>
+          <AnimateIcon animateOnHover>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-lg">
+                <FilePenLineIcon size={18} />
               </Button>
+            </DropdownMenuTrigger>
+          </AnimateIcon>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Config file</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem onSelect={() => setConfigEditorOpen(true)}>
+                <FilePenLineIcon size={14} />
+                Edit config
+              </DropdownMenuItem>
             </AnimateIcon>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Import config</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger>
-            <AnimateIcon animateOnHover>
-              <Button variant="outline" size="icon-lg" asChild>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem onSelect={openImportPicker} disabled={isImporting}>
+                <UploadIcon size={14} />
+                Import config
+              </DropdownMenuItem>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem asChild>
                 <a href="/api/config/export" download>
-                  <DownloadIcon size={18} />
+                  <DownloadIcon size={14} />
+                  Export config
                 </a>
-              </Button>
+              </DropdownMenuItem>
             </AnimateIcon>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Export config</TooltipContent>
-        </Tooltip>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Tooltip>
           <TooltipTrigger onClick={() => setSettingsOpen(true)}>
             <AnimateIcon animateOnHover>
@@ -423,6 +445,18 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
           categories={categories}
           onSuccess={handleRefresh}
           cacheKey={refreshKey}
+        />
+        <ConfigEditorDialog
+          open={configEditorOpen}
+          onOpenChange={setConfigEditorOpen}
+          onSaved={(config) => {
+            setCategories(config.categories);
+            setServices(config.services);
+            setAppTitleState(config.appTitle ?? '');
+            setAppLogoState(config.appLogo);
+            setRefreshKey((value) => value + 1);
+            router.refresh();
+          }}
         />
       </main>
       </AppearanceProvider>
