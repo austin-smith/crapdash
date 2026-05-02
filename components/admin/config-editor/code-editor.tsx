@@ -14,7 +14,7 @@ import {
 } from '@codemirror/language';
 import { lintKeymap } from '@codemirror/lint';
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { Compartment, EditorState } from '@codemirror/state';
+import { Compartment, EditorState, Transaction } from '@codemirror/state';
 import {
   crosshairCursor,
   drawSelection,
@@ -168,6 +168,7 @@ export function CodeEditor({ value, onChange, readOnly = false, className }: Cod
 
     view.dispatch({
       changes: { from: 0, to: currentValue.length, insert: value },
+      annotations: Transaction.addToHistory.of(false),
     });
   }, [value]);
 
