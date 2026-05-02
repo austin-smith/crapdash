@@ -148,7 +148,10 @@ export function ConfigEditorDialog({ open, onOpenChange, onSaved }: ConfigEditor
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="h-[min(90vh,840px)] max-w-[min(96vw,1240px)] grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-0 p-0 sm:max-w-[min(96vw,1240px)]">
+      <DialogContent
+        className="h-[min(90vh,840px)] max-w-[min(96vw,1240px)] grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-0 p-0 sm:max-w-[min(96vw,1240px)]"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader className="border-b border-border px-4 py-3">
           <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
             <div className="space-y-1">
