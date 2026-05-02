@@ -41,6 +41,7 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
   const [failedLogoValue, setFailedLogoValue] = useState<string | null>(null);
   const [loadedLogoValue, setLoadedLogoValue] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const appLogoSrc = appLogo?.type === ICON_TYPES.IMAGE ? appLogo.value : null;
 
   useEffect(() => {
     setTitle(appTitle?.trim() || DEFAULT_APP_TITLE);
@@ -48,13 +49,16 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
 
   useEffect(() => {
     setLogo(appLogo);
+  }, [appLogo]);
+
+  useEffect(() => {
     setFailedLogoValue(null);
     setLoadedLogoValue(null);
     setPreviewUrl((currentPreviewUrl) => {
       if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
       return null;
     });
-  }, [appLogo]);
+  }, [appLogoSrc]);
 
   const hasTitleChanges = useMemo(() => {
     const currentTitle = title?.trim() || '';
