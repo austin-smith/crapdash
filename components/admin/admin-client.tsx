@@ -1,16 +1,36 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import Link from 'next/link';
+import { toast } from 'sonner';
+import { Plus, FolderOpen, Computer } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/header/page-header';
-import { Plus, FolderOpen, Computer } from 'lucide-react';
 import { ArrowLeftIcon } from '@/components/ui/animated-icons/arrow-left';
 import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
 import { SlidersHorizontalIcon } from '@/components/ui/animated-icons/sliders-horizontal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PreferencesDialog } from '@/components/layout/header/preferences-dialog';
 import { AppearanceProvider } from '@/components/theme/appearance-provider';
 import { usePreferences } from '@/hooks/use-preferences';
@@ -20,8 +40,12 @@ import { CategoryFormModal } from '@/components/admin/categories/category-form-m
 import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { DownloadIcon } from '@/components/ui/animated-icons/download';
+import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
+import { UploadIcon } from '@/components/ui/animated-icons/upload';
+import { importConfig } from '@/lib/actions';
 import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
+import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
 
 // Dynamic imports to avoid SSR for drag-and-drop components
@@ -37,6 +61,7 @@ interface AdminClientProps {
 }
 
 export function AdminClient({ appTitle, appLogo, categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
   const [appTitleState, setAppTitleState] = useState<string>(appTitle ?? '');
@@ -50,7 +75,12 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const adminTitle = `${(appTitleState?.trim() || DEFAULT_APP_TITLE)} /admin`;
 
   useKeyboardShortcuts([
@@ -151,23 +181,111 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
     }
   };
 
+  const openImportPicker = () => {
+    if (isImporting) return;
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+
+    if (!file) return;
+
+    setPendingImportFile(file);
+    setImportConfirmOpen(true);
+  };
+
+  const handleImportConfirmOpenChange = (open: boolean) => {
+    if (isImporting) return;
+    setImportConfirmOpen(open);
+    if (!open) {
+      setPendingImportFile(null);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImportFile || isImporting) return;
+
+    setIsImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', pendingImportFile);
+
+      const result = await importConfig(formData);
+
+      if (!result.success) {
+        toast.error(result.errors[0]?.message ?? 'Failed to import configuration');
+        return;
+      }
+
+      setCategories(result.data.config.categories);
+      setServices(result.data.config.services);
+      setAppTitleState(result.data.config.appTitle ?? '');
+      setAppLogoState(result.data.config.appLogo);
+      setRefreshKey((value) => value + 1);
+      setPendingImportFile(null);
+      setImportConfirmOpen(false);
+
+      toast.success('Configuration imported.');
+
+      const warningCount = result.data.warnings.length;
+      if (warningCount > 0) {
+        const firstWarning = result.data.warnings[0]?.message;
+        toast.warning(
+          warningCount === 1
+            ? `Imported with 1 warning: ${firstWarning}`
+            : `Imported with ${warningCount} warnings. First warning: ${firstWarning}`
+        );
+      }
+
+      router.refresh();
+    } catch (error) {
+      console.error('Import config client error:', error);
+      toast.error('Failed to import configuration');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <>
       <AppearanceProvider appearance={settings.appearance} onAppearanceChange={(appearance) => updateSetting('appearance', appearance)}>
       <PageHeader title={adminTitle} appLogo={appLogoState}>
         <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
-        <Tooltip>
-          <TooltipTrigger>
-            <AnimateIcon animateOnHover>
-              <Button variant="outline" size="icon-lg" asChild>
-                <a href="/api/config/export" download>
-                  <DownloadIcon size={18} />
-                </a>
+        <DropdownMenu>
+          <AnimateIcon animateOnHover>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-lg">
+                <FilePenLineIcon size={18} />
               </Button>
+            </DropdownMenuTrigger>
+          </AnimateIcon>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Config file</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem onSelect={() => setConfigEditorOpen(true)}>
+                <FilePenLineIcon size={14} />
+                Edit config
+              </DropdownMenuItem>
             </AnimateIcon>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Export config</TooltipContent>
-        </Tooltip>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem onSelect={openImportPicker} disabled={isImporting}>
+                <UploadIcon size={14} />
+                Import config
+              </DropdownMenuItem>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem asChild>
+                <a href="/api/config/export" download>
+                  <DownloadIcon size={14} />
+                  Export config
+                </a>
+              </DropdownMenuItem>
+            </AnimateIcon>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Tooltip>
           <TooltipTrigger onClick={() => setSettingsOpen(true)}>
             <AnimateIcon animateOnHover>
@@ -193,6 +311,13 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
           </TooltipTrigger>
           <TooltipContent side="bottom">Get back there</TooltipContent>
         </Tooltip>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={handleImportFileSelect}
+          className="hidden"
+        />
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
@@ -321,10 +446,50 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
           onSuccess={handleRefresh}
           cacheKey={refreshKey}
         />
+        <ConfigEditorDialog
+          open={configEditorOpen}
+          onOpenChange={setConfigEditorOpen}
+          onSaved={(config) => {
+            setCategories(config.categories);
+            setServices(config.services);
+            setAppTitleState(config.appTitle ?? '');
+            setAppLogoState(config.appLogo);
+            setRefreshKey((value) => value + 1);
+            router.refresh();
+          }}
+        />
       </main>
       </AppearanceProvider>
 
       {showFooter && <PageFooter />}
+
+      <AlertDialog open={importConfirmOpen} onOpenChange={handleImportConfirmOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              This replaces the current configuration with the selected file.
+              {pendingImportFile && (
+                <span className="mt-2 block font-mono text-xs text-foreground/80">
+                  File: {pendingImportFile.name}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isImporting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmImport();
+              }}
+              disabled={!pendingImportFile || isImporting}
+            >
+              {isImporting ? 'Importing...' : 'Import and replace'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

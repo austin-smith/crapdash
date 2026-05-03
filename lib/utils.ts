@@ -13,6 +13,10 @@ export function getAppTitle(appTitle?: string): string {
   return appTitle?.trim() || DEFAULT_APP_TITLE;
 }
 
+export function getConfigExportFilename(date = new Date()): string {
+  return `crapdash-config-${date.toISOString().slice(0, 10)}.json`;
+}
+
 /**
  * Set a cookie (client-side only)
  */

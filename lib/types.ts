@@ -59,6 +59,16 @@ export interface DashboardConfig {
   services: Service[];
 }
 
+export interface ImportWarning {
+  field: string;
+  message: string;
+}
+
+export interface ImportConfigResult {
+  warnings: ImportWarning[];
+  config: DashboardConfig;
+}
+
 export type CategoryFormData = Omit<Category, 'id'>;
 export type CategoryCreateData = Category;
 export type ServiceFormData = Omit<Service, 'id'>;

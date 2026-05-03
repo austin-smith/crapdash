@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { readConfig } from '@/lib/db';
+import { readRawConfig } from '@/lib/db';
+import { getConfigExportFilename } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const config = await readConfig();
-    const today = new Date().toISOString().slice(0, 10);
+    const raw = await readRawConfig();
 
-    return new NextResponse(JSON.stringify(config, null, 2), {
+    return new NextResponse(raw, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="config-${today}.json"`,
+        'Content-Disposition': `attachment; filename="${getConfigExportFilename()}"`,
         'Cache-Control': 'no-store',
       },
     });

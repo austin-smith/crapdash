@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import type { HTMLAttributes, MouseEvent, ReactNode } from 'react';
+import { createContext, forwardRef, useCallback, useContext, useState } from 'react';
 import { Slot } from 'radix-ui';
 
 interface AnimateIconContextValue {
@@ -13,34 +14,43 @@ export function useAnimateIconContext() {
   return useContext(AnimateIconContext);
 }
 
-interface AnimateIconProps {
-  children: React.ReactNode;
+interface AnimateIconProps extends HTMLAttributes<HTMLElement> {
+  children: ReactNode;
   asChild?: boolean;
   animateOnHover?: boolean;
 }
 
-export function AnimateIcon({ children, asChild, animateOnHover }: AnimateIconProps) {
+const AnimateIcon = forwardRef<HTMLElement, AnimateIconProps>(function AnimateIcon(
+  { children, asChild, animateOnHover, onMouseEnter, onMouseLeave, ...props },
+  ref
+) {
   const [active, setActive] = useState(false);
 
-  const handleMouseEnter = useCallback(() => {
+  const handleMouseEnter = useCallback((event: MouseEvent<HTMLElement>) => {
     if (animateOnHover) {
       setActive(true);
     }
-  }, [animateOnHover]);
 
-  const handleMouseLeave = useCallback(() => {
+    onMouseEnter?.(event);
+  }, [animateOnHover, onMouseEnter]);
+
+  const handleMouseLeave = useCallback((event: MouseEvent<HTMLElement>) => {
     if (animateOnHover) {
       setActive(false);
     }
-  }, [animateOnHover]);
+
+    onMouseLeave?.(event);
+  }, [animateOnHover, onMouseLeave]);
 
   const Comp = asChild ? Slot.Root : 'span';
 
   return (
     <AnimateIconContext.Provider value={{ active }}>
-      <Comp onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <Comp ref={ref} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} {...props}>
         {children}
       </Comp>
     </AnimateIconContext.Provider>
   );
-}
+});
+
+export { AnimateIcon };

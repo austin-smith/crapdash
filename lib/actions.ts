@@ -1,14 +1,53 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ZodError } from 'zod';
-import { readConfig, writeConfig } from './db';
-import { appSettingsSchema, categorySchema, categoryCreateSchema, serviceSchema, serviceCreateSchema, serviceIdSchema } from './validations';
+import { revalidatePath } from 'next/cache';
+import { collectConfigImportWarnings } from './config-import';
+import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
+import {
+  appSettingsSchema,
+  categorySchema,
+  categoryCreateSchema,
+  dashboardConfigImportSchema,
+  serviceSchema,
+  serviceCreateSchema,
+  serviceIdSchema,
+} from './validations';
 import { deleteAppLogo, deleteServiceIcon, getAppLogoFilename, getIconFilePath, isValidImageExtension } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
-import { ICON_TYPES, type Category, type Service, type ActionResult, type CategoryFormData, type CategoryCreateData, type ServiceFormData, type ServiceCreateData, type IconConfig } from './types';
+import {
+  ICON_TYPES,
+  type Category,
+  type Service,
+  type ActionResult,
+  type CategoryFormData,
+  type CategoryCreateData,
+  type ServiceFormData,
+  type ServiceCreateData,
+  type IconConfig,
+  type ImportConfigResult,
+} from './types';
+
+const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
+const MAX_CONFIG_IMPORT_BYTES = MAX_CONFIG_IMPORT_SIZE;
+
+interface ConfigEditorState {
+  raw: string;
+  revision: string;
+}
+
+interface SaveConfigJsonInput {
+  raw: string;
+  revision?: string;
+  force?: boolean;
+}
+
+type SaveConfigJsonResult = ImportConfigResult & {
+  revision: string;
+};
 
 function validateImageFile(file: File, fieldName: string): { success: false; errors: { field: string; message: string }[] } | null {
   if (!isAllowedImageMime(file.type)) {
@@ -49,6 +88,73 @@ async function writeIconFile(file: File, filename: string, baseNameForCleanup: s
   }
 
   return `icons/${filename}`;
+}
+
+function mapValidationIssues(error: ZodError): Array<{ field: string; message: string }> {
+  return error.issues.map((issue) => ({
+    field: issue.path.join('.') || 'general',
+    message: issue.message,
+  }));
+}
+
+function getConfigRevision(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
+}
+
+async function parseAndValidateConfigJson(raw: string, field: string): Promise<ActionResult<ImportConfigResult>> {
+  if (!raw.trim()) {
+    return {
+      success: false,
+      errors: [{ field, message: 'Configuration cannot be empty' }],
+    };
+  }
+
+  if (Buffer.byteLength(raw, 'utf-8') > MAX_CONFIG_IMPORT_BYTES) {
+    return {
+      success: false,
+      errors: [{
+        field,
+        message: `Configuration is too large. Maximum size is ${MAX_CONFIG_IMPORT_BYTES / 1024 / 1024}MB.`,
+      }],
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    const message = error instanceof SyntaxError ? error.message : 'Invalid JSON';
+    return {
+      success: false,
+      errors: [{ field, message }],
+    };
+  }
+
+  const validation = dashboardConfigImportSchema.safeParse(parsed);
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: mapValidationIssues(validation.error),
+    };
+  }
+
+  const nextConfig = validation.data;
+  const warnings = await collectConfigImportWarnings(nextConfig);
+
+  return {
+    success: true,
+    data: {
+      warnings,
+      config: nextConfig,
+    },
+  };
+}
+
+async function persistConfigImportResult(result: ImportConfigResult): Promise<void> {
+  await writeConfig(result.config);
+
+  revalidatePath('/');
+  revalidatePath('/admin');
 }
 
 export async function uploadServiceIcon(formData: FormData): Promise<ActionResult<string>> {
@@ -106,6 +212,128 @@ export async function uploadAppLogo(formData: FormData): Promise<ActionResult<st
   } catch (error) {
     console.error('Upload app logo error:', error);
     return { success: false, errors: [{ field: 'appLogo', message: 'Failed to upload file' }] };
+  }
+}
+
+export async function importConfig(formData: FormData): Promise<ActionResult<ImportConfigResult>> {
+  try {
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'No file provided' }],
+      };
+    }
+
+    if (file.size === 0) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'File is empty' }],
+      };
+    }
+
+    if (file.size > MAX_CONFIG_IMPORT_SIZE) {
+      return {
+        success: false,
+        errors: [{
+          field: 'file',
+          message: `File too large. Maximum size is ${MAX_CONFIG_IMPORT_SIZE / 1024 / 1024}MB.`,
+        }],
+      };
+    }
+
+    const filename = file.name.toLowerCase();
+    if (!filename.endsWith('.json')) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'Config import requires a .json file' }],
+      };
+    }
+
+    const raw = await file.text();
+    if (!raw.trim()) {
+      return {
+        success: false,
+        errors: [{ field: 'file', message: 'File is empty' }],
+      };
+    }
+
+    const result = await parseAndValidateConfigJson(raw, 'file');
+    if (!result.success) return result;
+
+    await persistConfigImportResult(result.data);
+
+    return result;
+  } catch (error) {
+    console.error('Import config error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to import configuration' }],
+    };
+  }
+}
+
+export async function getConfigEditorState(): Promise<ActionResult<ConfigEditorState>> {
+  try {
+    const raw = await readRawConfig();
+
+    return {
+      success: true,
+      data: {
+        raw,
+        revision: getConfigRevision(raw),
+      },
+    };
+  } catch (error) {
+    console.error('Read config editor state error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to read configuration' }],
+    };
+  }
+}
+
+export async function saveConfigJson(input: SaveConfigJsonInput): Promise<ActionResult<SaveConfigJsonResult>> {
+  try {
+    const raw = typeof input.raw === 'string' ? input.raw : '';
+    const result = await parseAndValidateConfigJson(raw, 'config');
+    if (!result.success) return result;
+
+    const nextRaw = JSON.stringify(result.data.config, null, 2);
+
+    if (input.force || !input.revision) {
+      await writeConfig(result.data.config);
+    } else {
+      const wrote = await writeRawConfigIfRevisionMatches(nextRaw, input.revision);
+
+      if (!wrote) {
+        return {
+          success: false,
+          errors: [{
+            field: 'revision',
+            message: 'Configuration changed since this editor was opened. Reload before saving or force save to replace it.',
+          }],
+        };
+      }
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      data: {
+        ...result.data,
+        revision: getConfigRevision(nextRaw),
+      },
+    };
+  } catch (error) {
+    console.error('Save config JSON error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to save configuration' }],
+    };
   }
 }
 
