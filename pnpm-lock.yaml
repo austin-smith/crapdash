@@ -35,6 +35,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.41.1
         version: 6.41.1
+      '@lezer/highlight':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -6,9 +6,9 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { json } from '@codemirror/lang-json';
 import {
   bracketMatching,
-  defaultHighlightStyle,
   foldGutter,
   foldKeymap,
+  HighlightStyle,
   indentOnInput,
   syntaxHighlighting,
 } from '@codemirror/language';
@@ -27,6 +27,7 @@ import {
   lineNumbers,
   rectangularSelection,
 } from '@codemirror/view';
+import { tags } from '@lezer/highlight';
 import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
@@ -76,6 +77,29 @@ const editorTheme = EditorView.theme({
   },
 });
 
+const jsonHighlightStyle = HighlightStyle.define([
+  {
+    tag: tags.propertyName,
+    color: 'var(--foreground)',
+  },
+  {
+    tag: tags.string,
+    color: 'color-mix(in oklch, var(--primary) 76%, var(--foreground))',
+  },
+  {
+    tag: [tags.number, tags.bool, tags.null],
+    color: 'color-mix(in oklch, var(--foreground) 72%, var(--primary))',
+  },
+  {
+    tag: tags.escape,
+    color: 'var(--muted-foreground)',
+  },
+  {
+    tag: tags.invalid,
+    color: 'var(--destructive)',
+  },
+]);
+
 export function CodeEditor({ value, onChange, readOnly = false, className }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -104,7 +128,7 @@ export function CodeEditor({ value, onChange, readOnly = false, className }: Cod
           dropCursor(),
           EditorState.allowMultipleSelections.of(true),
           indentOnInput(),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          syntaxHighlighting(jsonHighlightStyle),
           bracketMatching(),
           closeBrackets(),
           autocompletion(),
