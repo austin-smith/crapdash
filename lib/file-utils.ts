@@ -1,9 +1,22 @@
+import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { isAllowedImageExtension } from './image-constants';
+import { getIconsDir } from './paths';
 
-const ICONS_DIR = path.join(process.cwd(), 'data', 'icons');
 const APP_LOGO_BASENAME = 'app-logo';
+const PROVISIONAL_ICON_BASENAME_PREFIX = '__tmp-favicon-';
+
+interface IconFileBackup {
+  filename: string;
+  buffer: Buffer;
+}
+
+async function getIconFilesForBaseName(baseName: string): Promise<string[]> {
+  const files = await fs.readdir(getIconsDir()).catch(() => []);
+
+  return files.filter((file) => path.parse(file).name === baseName);
+}
 
 /**
  * Deletes all icon files for a given service ID
@@ -11,17 +24,11 @@ const APP_LOGO_BASENAME = 'app-logo';
  */
 export async function deleteServiceIcon(serviceId: string): Promise<void> {
   try {
-    const files = await fs.readdir(ICONS_DIR);
-
-    // Find all files that start with the serviceId
-    const iconFiles = files.filter(file => {
-      const nameWithoutExt = path.parse(file).name;
-      return nameWithoutExt === serviceId;
-    });
+    const iconFiles = await getIconFilesForBaseName(serviceId);
 
     // Delete each found icon file
     for (const file of iconFiles) {
-      const filePath = path.join(ICONS_DIR, file);
+      const filePath = path.join(getIconsDir(), file);
       await fs.unlink(filePath);
       console.log(`Deleted icon: ${file}`);
     }
@@ -36,12 +43,7 @@ export async function deleteServiceIcon(serviceId: string): Promise<void> {
  */
 export async function getServiceIconPath(serviceId: string): Promise<string | null> {
   try {
-    const files = await fs.readdir(ICONS_DIR);
-
-    const iconFile = files.find(file => {
-      const nameWithoutExt = path.parse(file).name;
-      return nameWithoutExt === serviceId;
-    });
+    const iconFile = (await getIconFilesForBaseName(serviceId))[0];
 
     return iconFile ? `icons/${iconFile}` : null;
   } catch (error) {
@@ -61,14 +63,107 @@ export function isValidImageExtension(filename: string): boolean {
  * Gets the full filesystem path for an icon
  */
 export function getIconFilePath(filename: string): string {
-  return path.join(ICONS_DIR, filename);
+  return path.join(getIconsDir(), filename);
+}
+
+/**
+ * Writes an icon buffer atomically and removes stale files for the same logical icon name.
+ */
+export async function writeIconBuffer(
+  buffer: Buffer,
+  filename: string,
+  baseNameForCleanup?: string
+): Promise<string> {
+  const filePath = getIconFilePath(filename);
+  const iconsDir = path.dirname(filePath);
+  const tempPath = path.join(iconsDir, `${filename}.tmp-${randomUUID()}`);
+
+  await fs.mkdir(iconsDir, { recursive: true });
+
+  const existingIcons = baseNameForCleanup ? await fs.readdir(iconsDir).catch(() => []) : [];
+  const oldFiles = existingIcons.filter((file) => (
+    path.parse(file).name === baseNameForCleanup && file !== filename
+  ));
+
+  try {
+    await fs.writeFile(tempPath, buffer);
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.unlink(tempPath).catch(() => {});
+    throw error;
+  }
+
+  for (const oldFile of oldFiles) {
+    await fs.unlink(path.join(iconsDir, oldFile)).catch(() => {});
+  }
+
+  return `icons/${filename}`;
+}
+
+export async function backupServiceIconFiles(serviceId: string): Promise<IconFileBackup[]> {
+  const files = await getIconFilesForBaseName(serviceId);
+
+  return Promise.all(files.map(async (filename) => ({
+    filename,
+    buffer: await fs.readFile(getIconFilePath(filename)),
+  })));
+}
+
+export async function restoreServiceIconFiles(
+  serviceId: string,
+  backups: IconFileBackup[]
+): Promise<void> {
+  await fs.mkdir(getIconsDir(), { recursive: true });
+
+  const currentFiles = await getIconFilesForBaseName(serviceId);
+  await Promise.all(currentFiles.map((filename) => (
+    fs.unlink(getIconFilePath(filename)).catch(() => {})
+  )));
+
+  await Promise.all(backups.map((backup) => (
+    fs.writeFile(getIconFilePath(backup.filename), backup.buffer)
+  )));
+}
+
+export function getProvisionalIconFilename(ext: string): string {
+  return `${PROVISIONAL_ICON_BASENAME_PREFIX}${randomUUID()}${ext}`;
+}
+
+export function isProvisionalIconPath(iconPath: string): boolean {
+  const filename = path.basename(iconPath);
+
+  return (
+    iconPath === `icons/${filename}` &&
+    path.parse(filename).name.startsWith(PROVISIONAL_ICON_BASENAME_PREFIX) &&
+    isValidImageExtension(filename)
+  );
+}
+
+export async function promoteProvisionalIcon(iconPath: string, serviceId: string): Promise<string> {
+  if (!isProvisionalIconPath(iconPath)) {
+    throw new Error('Only provisional icons can be promoted');
+  }
+
+  const filename = path.basename(iconPath);
+  const ext = path.extname(filename).toLowerCase();
+  const buffer = await fs.readFile(getIconFilePath(filename));
+  return writeIconBuffer(buffer, `${serviceId}${ext}`, serviceId);
+}
+
+/**
+ * Deletes a single icon file by stored config path (e.g., "icons/foo.png").
+ */
+export async function deleteIconFile(iconPath: string): Promise<void> {
+  const filePath = path.join(getIconsDir(), path.basename(iconPath));
+
+  await fs.unlink(filePath).catch(() => {});
 }
 
 /**
  * Deletes the stored app logo file at the given config path (e.g., "icons/foo.png").
  */
 export async function deleteAppLogo(iconPath: string): Promise<void> {
-  const filePath = path.join(ICONS_DIR, path.basename(iconPath));
+  const filePath = path.join(getIconsDir(), path.basename(iconPath));
   try {
     await fs.unlink(filePath).catch(() => {});
   } catch (error) {

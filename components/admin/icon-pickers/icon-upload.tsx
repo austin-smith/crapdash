@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Upload, X, ImageIcon } from 'lucide-react';
+import { Globe, Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,21 @@ interface IconUploadProps {
   onFileSelect: (file: File | null) => void;
   onClear: () => void;
   cacheKey?: number;
+  onFetchFromUrl?: () => void;
+  fetchDisabled?: boolean;
+  isFetching?: boolean;
 }
 
-export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey }: IconUploadProps) {
+export function IconUpload({
+  value,
+  pendingFile,
+  onFileSelect,
+  onClear,
+  cacheKey,
+  onFetchFromUrl,
+  fetchDisabled,
+  isFetching,
+}: IconUploadProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -136,8 +148,21 @@ export function IconUpload({ value, pendingFile, onFileSelect, onClear, cacheKey
                   onClick={openFilePicker}
                 >
                   <Upload className="w-4 h-4" />
-                  {currentIcon ? 'Change Icon' : 'Upload Icon'}
+                  Upload file
                 </Button>
+
+                {onFetchFromUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onFetchFromUrl}
+                    disabled={fetchDisabled || isFetching}
+                  >
+                    <Globe className="w-4 h-4" />
+                    {isFetching ? 'Fetching...' : 'Fetch favicon'}
+                  </Button>
+                )}
 
                 {currentIcon && (
                   <Button

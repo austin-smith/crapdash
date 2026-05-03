@@ -2,10 +2,9 @@ import { createHash, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { dashboardConfigImportSchema } from './validations';
+import { getConfigLockPath, getConfigPath } from './paths';
 import type { Category, Service, DashboardConfig, IconConfig } from './types';
 
-const CONFIG_PATH = path.join(process.cwd(), 'data', 'config.json');
-const CONFIG_LOCK_PATH = `${CONFIG_PATH}.lock`;
 const CONFIG_LOCK_TIMEOUT_MS = 5_000;
 const CONFIG_LOCK_RETRY_MS = 50;
 const CONFIG_LOCK_STALE_MS = 30_000;
@@ -31,17 +30,18 @@ function getConfigRevision(raw: string): string {
 }
 
 async function ensureConfigDirectory(): Promise<void> {
-  await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+  await fs.mkdir(path.dirname(getConfigPath()), { recursive: true });
 }
 
 async function writeRawConfigAtomic(raw: string): Promise<void> {
   await ensureConfigDirectory();
 
-  const tempPath = path.join(path.dirname(CONFIG_PATH), `${path.basename(CONFIG_PATH)}.tmp-${randomUUID()}`);
+  const configPath = getConfigPath();
+  const tempPath = path.join(path.dirname(configPath), `${path.basename(configPath)}.tmp-${randomUUID()}`);
 
   try {
     await fs.writeFile(tempPath, raw, 'utf-8');
-    await fs.rename(tempPath, CONFIG_PATH);
+    await fs.rename(tempPath, configPath);
   } catch (error) {
     await fs.unlink(tempPath).catch(() => {});
     throw error;
@@ -50,7 +50,7 @@ async function writeRawConfigAtomic(raw: string): Promise<void> {
 
 async function readRawConfigFile(): Promise<string | null> {
   try {
-    return await fs.readFile(CONFIG_PATH, 'utf-8');
+    return await fs.readFile(getConfigPath(), 'utf-8');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return null;
@@ -89,10 +89,11 @@ async function acquireConfigLock(): Promise<void> {
   await ensureConfigDirectory();
 
   const deadline = Date.now() + CONFIG_LOCK_TIMEOUT_MS;
+  const lockPath = getConfigLockPath();
 
   while (true) {
     try {
-      const handle = await fs.open(CONFIG_LOCK_PATH, 'wx');
+      const handle = await fs.open(lockPath, 'wx');
       await handle.close();
       return;
     } catch (error) {
@@ -101,9 +102,9 @@ async function acquireConfigLock(): Promise<void> {
         throw new Error('Failed to lock configuration');
       }
 
-      const stats = await fs.stat(CONFIG_LOCK_PATH).catch(() => null);
+      const stats = await fs.stat(lockPath).catch(() => null);
       if (stats && Date.now() - stats.mtimeMs > CONFIG_LOCK_STALE_MS) {
-        await fs.unlink(CONFIG_LOCK_PATH).catch(() => {});
+        await fs.unlink(lockPath).catch(() => {});
         continue;
       }
 
@@ -117,7 +118,7 @@ async function acquireConfigLock(): Promise<void> {
 }
 
 async function releaseConfigLock(): Promise<void> {
-  await fs.unlink(CONFIG_LOCK_PATH).catch(() => {});
+  await fs.unlink(getConfigLockPath()).catch(() => {});
 }
 
 async function withConfigLock<T>(callback: () => Promise<T>): Promise<T> {
