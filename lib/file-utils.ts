@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { isAllowedImageExtension } from './image-constants';
+import { getIconsDir } from './paths';
 
-const ICONS_DIR = path.join(process.cwd(), 'data', 'icons');
 const APP_LOGO_BASENAME = 'app-logo';
 const PROVISIONAL_ICON_BASENAME_PREFIX = '__tmp-favicon-';
 
@@ -13,7 +13,7 @@ interface IconFileBackup {
 }
 
 async function getIconFilesForBaseName(baseName: string): Promise<string[]> {
-  const files = await fs.readdir(ICONS_DIR).catch(() => []);
+  const files = await fs.readdir(getIconsDir()).catch(() => []);
 
   return files.filter((file) => path.parse(file).name === baseName);
 }
@@ -28,7 +28,7 @@ export async function deleteServiceIcon(serviceId: string): Promise<void> {
 
     // Delete each found icon file
     for (const file of iconFiles) {
-      const filePath = path.join(ICONS_DIR, file);
+      const filePath = path.join(getIconsDir(), file);
       await fs.unlink(filePath);
       console.log(`Deleted icon: ${file}`);
     }
@@ -63,7 +63,7 @@ export function isValidImageExtension(filename: string): boolean {
  * Gets the full filesystem path for an icon
  */
 export function getIconFilePath(filename: string): string {
-  return path.join(ICONS_DIR, filename);
+  return path.join(getIconsDir(), filename);
 }
 
 /**
@@ -113,7 +113,7 @@ export async function restoreServiceIconFiles(
   serviceId: string,
   backups: IconFileBackup[]
 ): Promise<void> {
-  await fs.mkdir(ICONS_DIR, { recursive: true });
+  await fs.mkdir(getIconsDir(), { recursive: true });
 
   const currentFiles = await getIconFilesForBaseName(serviceId);
   await Promise.all(currentFiles.map((filename) => (
@@ -154,7 +154,7 @@ export async function promoteProvisionalIcon(iconPath: string, serviceId: string
  * Deletes a single icon file by stored config path (e.g., "icons/foo.png").
  */
 export async function deleteIconFile(iconPath: string): Promise<void> {
-  const filePath = path.join(ICONS_DIR, path.basename(iconPath));
+  const filePath = path.join(getIconsDir(), path.basename(iconPath));
 
   await fs.unlink(filePath).catch(() => {});
 }
@@ -163,7 +163,7 @@ export async function deleteIconFile(iconPath: string): Promise<void> {
  * Deletes the stored app logo file at the given config path (e.g., "icons/foo.png").
  */
 export async function deleteAppLogo(iconPath: string): Promise<void> {
-  const filePath = path.join(ICONS_DIR, path.basename(iconPath));
+  const filePath = path.join(getIconsDir(), path.basename(iconPath));
   try {
     await fs.unlink(filePath).catch(() => {});
   } catch (error) {
