@@ -206,7 +206,9 @@ function sniffImageExtension(buffer: Buffer): string | null {
   }
 
   const prefix = buffer.subarray(0, Math.min(buffer.length, 256)).toString('utf8').trimStart().toLowerCase();
-  if (prefix.startsWith('<svg') || prefix.startsWith('<?xml')) {
+  const xmlDeclaration = /^<\?xml\b[^>]*\?>/.exec(prefix);
+  const rootPrefix = xmlDeclaration ? prefix.slice(xmlDeclaration[0].length).trimStart() : prefix;
+  if (rootPrefix.startsWith('<svg')) {
     return '.svg';
   }
 

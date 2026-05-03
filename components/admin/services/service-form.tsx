@@ -158,25 +158,24 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     formData.append('serviceId', iconFetchId);
     formData.append('url', validUrl);
 
-    const result = await fetchServiceIcon(formData);
-    if (getLatestValidServiceUrl() !== validUrl || (silent && expectedUrl && validUrl !== expectedUrl)) {
-      if (result.success) {
-        cleanupFetchedIcon({ serviceId: iconFetchId, iconPath: result.data });
+    try {
+      const result = await fetchServiceIcon(formData);
+      if (getLatestValidServiceUrl() !== validUrl || (silent && expectedUrl && validUrl !== expectedUrl)) {
+        if (result.success) {
+          cleanupFetchedIcon({ serviceId: iconFetchId, iconPath: result.data });
+        }
+        return;
       }
-      setIsFetchingIcon(false);
-      return;
-    }
 
-    if (result.success) {
-      trackProvisionalIcon({ serviceId: iconFetchId, iconPath: result.data });
-      setPendingIconFile(null);
-      setIcon({ type: ICON_TYPES.IMAGE, value: result.data });
-      setIconVersion((value) => value + 1);
-      if (!silent) {
-        toast.success('Favicon fetched');
-      }
-    } else {
-      if (!silent) {
+      if (result.success) {
+        trackProvisionalIcon({ serviceId: iconFetchId, iconPath: result.data });
+        setPendingIconFile(null);
+        setIcon({ type: ICON_TYPES.IMAGE, value: result.data });
+        setIconVersion((value) => value + 1);
+        if (!silent) {
+          toast.success('Favicon fetched');
+        }
+      } else if (!silent) {
         const errorMap: Record<string, string> = {};
         result.errors.forEach((error) => {
           errorMap[error.field] = error.message;
@@ -184,9 +183,14 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         setErrors((current) => ({ ...current, ...errorMap }));
         toast.error(result.errors[0]?.message ?? 'Failed to fetch favicon');
       }
+    } catch {
+      if (!silent) {
+        setErrors((current) => ({ ...current, icon: 'Failed to fetch favicon' }));
+        toast.error('Failed to fetch favicon');
+      }
+    } finally {
+      setIsFetchingIcon(false);
     }
-
-    setIsFetchingIcon(false);
   }, [
     cleanupFetchedIcon,
     getLatestValidServiceUrl,
