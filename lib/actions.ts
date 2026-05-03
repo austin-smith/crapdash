@@ -17,6 +17,7 @@ import {
   serviceIdSchema,
 } from './validations';
 import {
+  backupServiceIconFiles,
   deleteAppLogo,
   deleteIconFile,
   deleteServiceIcon,
@@ -24,6 +25,7 @@ import {
   isProvisionalIconPath,
   isValidImageExtension,
   promoteProvisionalIcon,
+  restoreServiceIconFiles,
   writeIconBuffer,
 } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
@@ -678,6 +680,10 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
     }
 
     const previousService = config.services[index];
+    const existingIconBackup =
+      validated.icon?.type === ICON_TYPES.IMAGE && isProvisionalIconPath(validated.icon.value)
+        ? await backupServiceIconFiles(idValidation.data)
+        : null;
     const nextIcon = await getPromotedServiceIcon(validated.icon, idValidation.data);
     const updatedService: Service = {
       ...config.services[index],
@@ -686,7 +692,14 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
     };
 
     config.services[index] = updatedService;
-    await writeConfig(config);
+    try {
+      await writeConfig(config);
+    } catch (error) {
+      if (existingIconBackup) {
+        await restoreServiceIconFiles(idValidation.data, existingIconBackup);
+      }
+      throw error;
+    }
 
     // If we are moving away from an image icon, remove the old image file after the config persists
     if (

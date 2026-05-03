@@ -7,19 +7,24 @@ const ICONS_DIR = path.join(process.cwd(), 'data', 'icons');
 const APP_LOGO_BASENAME = 'app-logo';
 const PROVISIONAL_ICON_BASENAME_PREFIX = '__tmp-favicon-';
 
+interface IconFileBackup {
+  filename: string;
+  buffer: Buffer;
+}
+
+async function getIconFilesForBaseName(baseName: string): Promise<string[]> {
+  const files = await fs.readdir(ICONS_DIR).catch(() => []);
+
+  return files.filter((file) => path.parse(file).name === baseName);
+}
+
 /**
  * Deletes all icon files for a given service ID
  * Checks all possible extensions since we don't know which one was uploaded
  */
 export async function deleteServiceIcon(serviceId: string): Promise<void> {
   try {
-    const files = await fs.readdir(ICONS_DIR);
-
-    // Find all files that start with the serviceId
-    const iconFiles = files.filter(file => {
-      const nameWithoutExt = path.parse(file).name;
-      return nameWithoutExt === serviceId;
-    });
+    const iconFiles = await getIconFilesForBaseName(serviceId);
 
     // Delete each found icon file
     for (const file of iconFiles) {
@@ -38,12 +43,7 @@ export async function deleteServiceIcon(serviceId: string): Promise<void> {
  */
 export async function getServiceIconPath(serviceId: string): Promise<string | null> {
   try {
-    const files = await fs.readdir(ICONS_DIR);
-
-    const iconFile = files.find(file => {
-      const nameWithoutExt = path.parse(file).name;
-      return nameWithoutExt === serviceId;
-    });
+    const iconFile = (await getIconFilesForBaseName(serviceId))[0];
 
     return iconFile ? `icons/${iconFile}` : null;
   } catch (error) {
@@ -100,6 +100,31 @@ export async function writeIconBuffer(
   return `icons/${filename}`;
 }
 
+export async function backupServiceIconFiles(serviceId: string): Promise<IconFileBackup[]> {
+  const files = await getIconFilesForBaseName(serviceId);
+
+  return Promise.all(files.map(async (filename) => ({
+    filename,
+    buffer: await fs.readFile(getIconFilePath(filename)),
+  })));
+}
+
+export async function restoreServiceIconFiles(
+  serviceId: string,
+  backups: IconFileBackup[]
+): Promise<void> {
+  await fs.mkdir(ICONS_DIR, { recursive: true });
+
+  const currentFiles = await getIconFilesForBaseName(serviceId);
+  await Promise.all(currentFiles.map((filename) => (
+    fs.unlink(getIconFilePath(filename)).catch(() => {})
+  )));
+
+  await Promise.all(backups.map((backup) => (
+    fs.writeFile(getIconFilePath(backup.filename), backup.buffer)
+  )));
+}
+
 export function getProvisionalIconFilename(ext: string): string {
   return `${PROVISIONAL_ICON_BASENAME_PREFIX}${randomUUID()}${ext}`;
 }
@@ -122,11 +147,7 @@ export async function promoteProvisionalIcon(iconPath: string, serviceId: string
   const filename = path.basename(iconPath);
   const ext = path.extname(filename).toLowerCase();
   const buffer = await fs.readFile(getIconFilePath(filename));
-  const promotedPath = await writeIconBuffer(buffer, `${serviceId}${ext}`, serviceId);
-
-  await deleteIconFile(iconPath);
-
-  return promotedPath;
+  return writeIconBuffer(buffer, `${serviceId}${ext}`, serviceId);
 }
 
 /**

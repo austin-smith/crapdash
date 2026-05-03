@@ -327,42 +327,13 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       }
     }
 
-    if (!service && iconControl === 'auto' && finalIcon?.type === ICON_TYPES.IMAGE && serviceId) {
-      const filename = finalIcon.value.split('/').pop() ?? '';
-      const basename = filename.replace(/\.[^.]+$/, '');
-
-      if (basename !== serviceId) {
-        const validUrl = getValidServiceUrl();
-        let refreshedIcon: IconConfig | undefined;
-
-        if (validUrl) {
-          const formData = new FormData();
-          formData.append('serviceId', serviceId);
-          formData.append('url', validUrl);
-
-          const result = await fetchServiceIcon(formData);
-          if (result.success) {
-            refreshedIcon = { type: ICON_TYPES.IMAGE, value: result.data };
-            trackProvisionalIcon({ serviceId, iconPath: result.data });
-          }
-        }
-
-        finalIcon = refreshedIcon;
-        setIcon(refreshedIcon);
-        setIconVersion((value) => value + 1);
-        if (!refreshedIcon) {
-          releaseProvisionalIcon();
-        }
-      }
-    }
-
     const formData = { name, description, url, categoryId, icon: finalIcon, active };
     const result = service
       ? await updateService(service.id, formData)
       : await createService({ id: serviceId, ...formData, fetchFavicon: iconControl === 'auto' });
 
     if (result.success) {
-      releaseProvisionalIcon(finalIcon?.type === ICON_TYPES.IMAGE ? finalIcon.value : undefined);
+      releaseProvisionalIcon(result.data.icon?.type === ICON_TYPES.IMAGE ? result.data.icon.value : undefined);
       toast.success(service ? 'Service updated' : 'Service created');
       setName('');
       setDescription('');
