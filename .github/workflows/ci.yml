@@ -10,10 +10,10 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  lint-and-build:
+    name: Lint and Build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -36,3 +36,6 @@ jobs:
 
       - name: Run lint
         run: pnpm lint
+
+      - name: Run build
+        run: pnpm build
