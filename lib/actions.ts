@@ -1,12 +1,12 @@
 'use server';
 
 import { createHash } from 'crypto';
-import { promises as fs } from 'fs';
 import path from 'path';
 import { ZodError } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { collectConfigImportWarnings } from './config-import';
 import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
+import { fetchProvisionalServiceFavicon, fetchServiceFavicon } from './favicon';
 import {
   appSettingsSchema,
   categorySchema,
@@ -16,7 +16,16 @@ import {
   serviceCreateSchema,
   serviceIdSchema,
 } from './validations';
-import { deleteAppLogo, deleteServiceIcon, getAppLogoFilename, getIconFilePath, isValidImageExtension } from './file-utils';
+import {
+  deleteAppLogo,
+  deleteIconFile,
+  deleteServiceIcon,
+  getAppLogoFilename,
+  isProvisionalIconPath,
+  isValidImageExtension,
+  promoteProvisionalIcon,
+  writeIconBuffer,
+} from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
 import {
   ICON_TYPES,
@@ -49,6 +58,18 @@ type SaveConfigJsonResult = ImportConfigResult & {
   revision: string;
 };
 
+async function getPromotedServiceIcon(icon: IconConfig | undefined, serviceId: string): Promise<IconConfig | undefined> {
+  if (icon?.type !== ICON_TYPES.IMAGE || !isProvisionalIconPath(icon.value)) {
+    return icon;
+  }
+
+  const iconPath = await promoteProvisionalIcon(icon.value, serviceId);
+  return {
+    type: ICON_TYPES.IMAGE,
+    value: iconPath,
+  };
+}
+
 function validateImageFile(file: File, fieldName: string): { success: false; errors: { field: string; message: string }[] } | null {
   if (!isAllowedImageMime(file.type)) {
     return { success: false, errors: [{ field: fieldName, message: IMAGE_TYPE_ERROR }] };
@@ -63,31 +84,10 @@ function validateImageFile(file: File, fieldName: string): { success: false; err
 }
 
 async function writeIconFile(file: File, filename: string, baseNameForCleanup: string): Promise<string> {
-  const filePath = getIconFilePath(filename);
-  const iconsDir = path.dirname(filePath);
-  const tempPath = path.join(iconsDir, `${filename}.tmp-${crypto.randomUUID()}`);
-
-  await fs.mkdir(iconsDir, { recursive: true });
-
-  const existingIcons = await fs.readdir(iconsDir).catch(() => []);
-  const oldFiles = existingIcons.filter((f) => path.parse(f).name === baseNameForCleanup && f !== filename);
-
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  try {
-    await fs.writeFile(tempPath, buffer);
-    await fs.rename(tempPath, filePath);
-  } catch (error) {
-    await fs.unlink(tempPath).catch(() => {});
-    throw error;
-  }
-
-  for (const oldFile of oldFiles) {
-    await fs.unlink(path.join(iconsDir, oldFile)).catch(() => {});
-  }
-
-  return `icons/${filename}`;
+  return writeIconBuffer(buffer, filename, baseNameForCleanup);
 }
 
 function mapValidationIssues(error: ZodError): Array<{ field: string; message: string }> {
@@ -189,6 +189,70 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
   } catch (error) {
     console.error('Upload error:', error);
     return { success: false, errors: [{ field: 'icon', message: 'Failed to upload file' }] };
+  }
+}
+
+export async function fetchServiceIcon(formData: FormData): Promise<ActionResult<string>> {
+  try {
+    const serviceId = formData.get('serviceId') as string;
+    const serviceUrl = formData.get('url') as string;
+
+    if (!serviceId) {
+      return { success: false, errors: [{ field: 'icon', message: 'No service ID provided' }] };
+    }
+
+    const idValidation = serviceIdSchema.safeParse(serviceId);
+    if (!idValidation.success) {
+      return {
+        success: false,
+        errors: [{ field: 'icon', message: idValidation.error.issues[0]?.message ?? 'Invalid service ID format' }],
+      };
+    }
+
+    const urlValidation = serviceSchema.shape.url.safeParse(serviceUrl);
+    if (!urlValidation.success) {
+      return {
+        success: false,
+        errors: [{ field: 'url', message: urlValidation.error.issues[0]?.message ?? 'Must be a valid URL' }],
+      };
+    }
+
+    const iconPath = await fetchProvisionalServiceFavicon(urlValidation.data);
+    if (!iconPath) {
+      return {
+        success: false,
+        errors: [{ field: 'icon', message: 'No favicon found for this URL' }],
+      };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: iconPath };
+  } catch (error) {
+    console.error('Fetch service icon error:', error);
+    return { success: false, errors: [{ field: 'icon', message: 'Failed to fetch favicon' }] };
+  }
+}
+
+export async function cleanupFetchedServiceIcon(formData: FormData): Promise<ActionResult<void>> {
+  try {
+    const iconPath = formData.get('iconPath');
+
+    if (typeof iconPath !== 'string') {
+      return { success: false, errors: [{ field: 'icon', message: 'Invalid icon cleanup request' }] };
+    }
+
+    if (!isProvisionalIconPath(iconPath)) {
+      return { success: false, errors: [{ field: 'icon', message: 'Invalid icon path' }] };
+    }
+
+    await deleteIconFile(iconPath);
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error('Cleanup fetched service icon error:', error);
+    return { success: false, errors: [{ field: 'icon', message: 'Failed to clean up favicon' }] };
   }
 }
 
@@ -509,6 +573,7 @@ export async function deleteCategory(id: string): Promise<ActionResult<void>> {
 
 export async function createService(data: ServiceCreateData): Promise<ActionResult<Service>> {
   try {
+    const shouldFetchFavicon = data.fetchFavicon ?? true;
     const validated = serviceCreateSchema.parse({ ...data, active: data.active ?? true });
     const config = await readConfig();
 
@@ -530,10 +595,36 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
       };
     }
 
-    const newService: Service = validated;
+    let downloadedIconPath: string | null = null;
+    let promotedIconPath: string | null = null;
+    const newService: Service = {
+      ...validated,
+      icon: await getPromotedServiceIcon(validated.icon, validated.id),
+    };
+    if (
+      newService.icon?.type === ICON_TYPES.IMAGE &&
+      validated.icon?.type === ICON_TYPES.IMAGE &&
+      newService.icon.value !== validated.icon.value
+    ) {
+      promotedIconPath = newService.icon.value;
+    }
+
+    if (!newService.icon && shouldFetchFavicon) {
+      downloadedIconPath = await fetchServiceFavicon(newService.url, newService.id);
+      if (downloadedIconPath) {
+        newService.icon = { type: ICON_TYPES.IMAGE, value: downloadedIconPath };
+      }
+    }
 
     config.services.push(newService);
-    await writeConfig(config);
+    try {
+      await writeConfig(config);
+    } catch (error) {
+      if (downloadedIconPath || promotedIconPath) {
+        await deleteServiceIcon(newService.id);
+      }
+      throw error;
+    }
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -587,9 +678,11 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
     }
 
     const previousService = config.services[index];
+    const nextIcon = await getPromotedServiceIcon(validated.icon, idValidation.data);
     const updatedService: Service = {
       ...config.services[index],
       ...validated,
+      icon: nextIcon,
     };
 
     config.services[index] = updatedService;
@@ -598,7 +691,7 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
     // If we are moving away from an image icon, remove the old image file after the config persists
     if (
       previousService.icon?.type === ICON_TYPES.IMAGE &&
-      validated.icon?.type !== ICON_TYPES.IMAGE
+      nextIcon?.type !== ICON_TYPES.IMAGE
     ) {
       await deleteServiceIcon(id);
     }

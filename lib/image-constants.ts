@@ -7,13 +7,19 @@ const IMAGE_TYPE_MAP = {
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
   '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
 } as const;
+const ADDITIONAL_IMAGE_MIME_TYPES = ['image/vnd.microsoft.icon'] as const;
 
 type ImageExtension = keyof typeof IMAGE_TYPE_MAP;
-type ImageMimeType = (typeof IMAGE_TYPE_MAP)[ImageExtension];
+type ImageMimeType =
+  | (typeof IMAGE_TYPE_MAP)[ImageExtension]
+  | (typeof ADDITIONAL_IMAGE_MIME_TYPES)[number];
 
 const IMAGE_EXTENSIONS = Object.keys(IMAGE_TYPE_MAP) as ImageExtension[];
-const IMAGE_MIME_TYPES = Object.values(IMAGE_TYPE_MAP) as ImageMimeType[];
+const IMAGE_MIME_TYPES = [
+  ...new Set([...Object.values(IMAGE_TYPE_MAP), ...ADDITIONAL_IMAGE_MIME_TYPES]),
+] as ImageMimeType[];
 
 const IMAGE_ACCEPT = IMAGE_MIME_TYPES.join(',');
 const IMAGE_TYPE_LABEL = IMAGE_EXTENSIONS.map(ext => ext.slice(1).toUpperCase()).join(', ');
@@ -37,6 +43,17 @@ export function isAllowedImageMime(value: string): value is ImageMimeType {
 export function getImageContentType(value: string): ImageMimeType | null {
   const ext = extractExtension(value);
   return (IMAGE_TYPE_MAP as Record<string, ImageMimeType>)[ext] ?? null;
+}
+
+export function getImageExtensionForContentType(value: string): ImageExtension | null {
+  const contentType = value.toLowerCase().split(';')[0]?.trim();
+
+  if (contentType === 'image/vnd.microsoft.icon') {
+    return '.ico';
+  }
+
+  const entry = Object.entries(IMAGE_TYPE_MAP).find(([, mime]) => mime === contentType);
+  return entry ? (entry[0] as ImageExtension) : null;
 }
 
 export {

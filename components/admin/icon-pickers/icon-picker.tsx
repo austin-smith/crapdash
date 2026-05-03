@@ -14,6 +14,9 @@ interface IconPickerBaseProps {
   onClear: () => void;
   cacheKey?: number;
   disabled?: boolean;
+  onFetchImageFromUrl?: () => void;
+  fetchImageDisabled?: boolean;
+  isFetchingImage?: boolean;
 }
 
 type IconPickerProps =
@@ -44,6 +47,9 @@ function IconPickerInner({
   pendingFile,
   onValueChange,
   onFileSelect,
+  onFetchImageFromUrl,
+  fetchImageDisabled,
+  isFetchingImage,
   onClear,
   allowImage,
   cacheKey,
@@ -129,6 +135,9 @@ function IconPickerInner({
             onFileSelect={handleImageFileSelect}
             onClear={onClear}
             cacheKey={cacheKey}
+            onFetchFromUrl={onFetchImageFromUrl}
+            fetchDisabled={disabled || fetchImageDisabled}
+            isFetching={isFetchingImage}
           />
         </TabsContent>
       )}
