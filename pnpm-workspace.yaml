@@ -1,5 +1,7 @@
 packages:
   - .
+minimumReleaseAge: 10080
+blockExoticSubdeps: true
 allowBuilds:
   msw: true
   sharp: false
