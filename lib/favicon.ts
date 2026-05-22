@@ -60,7 +60,7 @@ function parseIconCandidates(html: string, baseUrl: URL): IconCandidate[] {
 
     try {
       const url = new URL(href, baseUrl);
-      if (!isHttpUrl(url) || url.origin !== baseUrl.origin) continue;
+      if (!isHttpUrl(url)) continue;
 
       candidates.push({
         url,
@@ -123,25 +123,29 @@ function dedupeAndSortCandidates(candidates: IconCandidate[]): IconCandidate[] {
   return [...byUrl.values()].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
 }
 
-async function fetchWithRedirects(url: URL, init: RequestInit, redirects = 0): Promise<Response> {
+async function fetchWithRedirects(
+  url: URL,
+  init: RequestInit,
+  redirects = 0
+): Promise<{ response: Response; url: URL }> {
   const response = await fetch(url, {
     ...init,
     redirect: 'manual',
   });
 
   if (![301, 302, 303, 307, 308].includes(response.status)) {
-    return response;
+    return { response, url };
   }
 
   if (redirects >= FAVICON_MAX_REDIRECTS) {
-    return response;
+    return { response, url };
   }
 
   const location = response.headers.get('location');
-  if (!location) return response;
+  if (!location) return { response, url };
 
   const nextUrl = new URL(location, url);
-  if (!isHttpUrl(nextUrl)) return response;
+  if (!isHttpUrl(nextUrl)) return { response, url };
 
   return fetchWithRedirects(nextUrl, init, redirects + 1);
 }
@@ -220,8 +224,8 @@ function getExtensionFromUrl(url: URL): string | null {
   return ext && isAllowedImageExtension(ext) ? ext : null;
 }
 
-async function fetchPageHtml(serviceUrl: URL): Promise<string | null> {
-  const response = await fetchWithRedirects(serviceUrl, {
+async function fetchPageHtml(serviceUrl: URL): Promise<{ html: string; pageUrl: URL } | null> {
+  const { response, url } = await fetchWithRedirects(serviceUrl, {
     headers: {
       Accept: 'text/html,application/xhtml+xml',
       'User-Agent': FAVICON_USER_AGENT,
@@ -235,11 +239,16 @@ async function fetchPageHtml(serviceUrl: URL): Promise<string | null> {
   if (contentType && !contentType.includes('html')) return null;
 
   const buffer = await readResponseBuffer(response, FAVICON_PAGE_MAX_BYTES);
-  return buffer?.toString('utf8') ?? null;
+  if (!buffer) return null;
+
+  return {
+    html: buffer.toString('utf8'),
+    pageUrl: url,
+  };
 }
 
 async function fetchIconCandidate(candidate: IconCandidate): Promise<{ buffer: Buffer; ext: string } | null> {
-  const response = await fetchWithRedirects(candidate.url, {
+  const { response } = await fetchWithRedirects(candidate.url, {
     headers: {
       Accept: 'image/avif,image/webp,image/svg+xml,image/png,image/*,*/*;q=0.8',
       'User-Agent': FAVICON_USER_AGENT,
@@ -274,15 +283,16 @@ async function findServiceFavicon(serviceUrl: string): Promise<{ buffer: Buffer;
   const baseUrl = new URL(serviceUrl);
   if (!isHttpUrl(baseUrl)) return null;
 
+  const page = await fetchPageHtml(baseUrl);
+  const pageUrl = page?.pageUrl ?? baseUrl;
   const fallbackCandidates: IconCandidate[] = [
-    { url: new URL('/apple-touch-icon.png', baseUrl), rel: 'apple-touch-icon', source: 'fallback' },
-    { url: new URL('/favicon.svg', baseUrl), rel: 'icon', source: 'fallback' },
-    { url: new URL('/favicon.png', baseUrl), rel: 'icon', source: 'fallback' },
-    { url: new URL('/favicon.ico', baseUrl), rel: 'icon', source: 'fallback' },
+    { url: new URL('/apple-touch-icon.png', pageUrl), rel: 'apple-touch-icon', source: 'fallback' },
+    { url: new URL('/favicon.svg', pageUrl), rel: 'icon', source: 'fallback' },
+    { url: new URL('/favicon.png', pageUrl), rel: 'icon', source: 'fallback' },
+    { url: new URL('/favicon.ico', pageUrl), rel: 'icon', source: 'fallback' },
   ];
 
-  const html = await fetchPageHtml(baseUrl);
-  const htmlCandidates = html ? parseIconCandidates(html, baseUrl) : [];
+  const htmlCandidates = page ? parseIconCandidates(page.html, pageUrl) : [];
   const candidates = dedupeAndSortCandidates([...htmlCandidates, ...fallbackCandidates]);
 
   for (const candidate of candidates) {

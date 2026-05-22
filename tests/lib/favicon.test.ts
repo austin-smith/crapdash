@@ -66,4 +66,59 @@ describe('favicon fetching', () => {
     await expect(fetchServiceFavicon('https://example.com/', 'example')).resolves.toBe('icons/example.svg');
     await expect(readFile(path.join(getIconsDir(), 'example.svg'), 'utf-8')).resolves.toBe(svg);
   });
+
+  it('resolves relative icon URLs against the final page URL after redirects', async () => {
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === 'https://example.com/') {
+        return response('', {
+          status: 301,
+          headers: { location: 'https://www.example.com/dashboard/' },
+        });
+      }
+
+      if (url === 'https://www.example.com/dashboard/') {
+        return response('<link rel="icon" href="assets/icon.png" type="image/png">', {
+          headers: { 'content-type': 'text/html' },
+        });
+      }
+
+      if (url === 'https://www.example.com/dashboard/assets/icon.png') {
+        return new Response(png, {
+          headers: { 'content-type': 'image/png' },
+        });
+      }
+
+      return response('', { status: 404 });
+    });
+
+    await expect(fetchServiceFavicon('https://example.com/', 'example')).resolves.toBe('icons/example.png');
+    await expect(readFile(path.join(getIconsDir(), 'example.png'))).resolves.toEqual(png);
+  });
+
+  it('accepts cross-origin icon URLs declared by the page', async () => {
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === 'https://example.com/') {
+        return response('<link rel="icon" href="https://cdn.example.com/favicon.png" type="image/png">', {
+          headers: { 'content-type': 'text/html' },
+        });
+      }
+
+      if (url === 'https://cdn.example.com/favicon.png') {
+        return new Response(png, {
+          headers: { 'content-type': 'image/png' },
+        });
+      }
+
+      return response('', { status: 404 });
+    });
+
+    await expect(fetchServiceFavicon('https://example.com/', 'example')).resolves.toBe('icons/example.png');
+    await expect(readFile(path.join(getIconsDir(), 'example.png'))).resolves.toEqual(png);
+  });
 });
