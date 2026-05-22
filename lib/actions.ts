@@ -227,9 +227,6 @@ export async function fetchServiceIcon(formData: FormData): Promise<ActionResult
       };
     }
 
-    revalidatePath('/');
-    revalidatePath('/admin');
-
     return { success: true, data: iconPath };
   } catch (error) {
     console.error('Fetch service icon error:', error);

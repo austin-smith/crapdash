@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  lint-and-test:
-    name: Lint and Test
+  lint-test-and-build:
+    name: Lint, Test, and Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -39,3 +39,6 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Run build
+        run: pnpm build
