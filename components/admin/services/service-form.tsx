@@ -46,6 +46,12 @@ interface FetchedServiceMetadata {
   description?: string;
 }
 
+interface MetadataFetchResult {
+  found: boolean;
+  applied: boolean;
+  stale: boolean;
+}
+
 function parseServiceUrl(value: string): string | null {
   try {
     const parsed = new URL(value);
@@ -226,16 +232,22 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
 
   const handleFetchServiceMetadata = useCallback(async ({
     silent = false,
+    expectedDescription,
+    expectedName,
     expectedUrl,
     mode = SERVICE_METADATA_APPLY_MODES.REPLACE,
   }: {
     silent?: boolean;
+    expectedDescription?: string;
+    expectedName?: string;
     expectedUrl?: string;
     mode?: ServiceMetadataApplyMode;
-  } = {}): Promise<boolean> => {
-    if (!url || isSubmitting || isFetchingMetadata) return false;
+  } = {}): Promise<MetadataFetchResult> => {
+    const emptyResult: MetadataFetchResult = { found: false, applied: false, stale: false };
+
+    if (!url || isSubmitting || isFetchingMetadata) return emptyResult;
     const validUrl = getValidServiceUrl();
-    if (!validUrl) return false;
+    if (!validUrl) return emptyResult;
     invalidateAutoMetadataFetch();
 
     const requestId = metadataFetchRequestRef.current + 1;
@@ -260,20 +272,28 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         getLatestValidServiceUrl() !== validUrl ||
         (silent && expectedUrl && validUrl !== expectedUrl)
       ) {
-        return false;
+        return { found: false, applied: false, stale: true };
       }
 
       if (result.success) {
-        const applied = applyFetchedMetadata(result.data, mode);
+        const metadataToApply: FetchedServiceMetadata = {
+          title:
+            expectedName === undefined || nameRef.current === expectedName
+              ? result.data.title
+              : undefined,
+          description:
+            expectedDescription === undefined || descriptionRef.current === expectedDescription
+              ? result.data.description
+              : undefined,
+        };
+        const applied = applyFetchedMetadata(metadataToApply, mode);
 
         if (!silent) {
           if (applied.name || applied.description) {
             toast.success('Service details fetched');
-          } else {
-            toast.info('Service details found; existing fields were kept');
           }
         }
-        return applied.name || applied.description;
+        return { found: true, applied: applied.name || applied.description, stale: false };
       } else if (!silent) {
         const errorMap: Record<string, string> = {};
         result.errors.forEach((error) => {
@@ -282,13 +302,13 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         setErrors((current) => ({ ...current, ...errorMap }));
         toast.error(result.errors[0]?.message ?? 'Failed to fetch service details');
       }
-      return false;
+      return emptyResult;
     } catch {
       if (!silent) {
         setErrors((current) => ({ ...current, url: 'Failed to fetch service details' }));
         toast.error('Failed to fetch service details');
       }
-      return false;
+      return emptyResult;
     } finally {
       if (metadataFetchRequestRef.current === requestId) {
         setIsFetchingMetadata(false);
@@ -395,9 +415,11 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       return next;
     });
 
-    const [metadataApplied, faviconApplied] = await Promise.all([
+    const [metadataResult, faviconApplied] = await Promise.all([
       handleFetchServiceMetadata({
         silent: true,
+        expectedDescription: descriptionRef.current,
+        expectedName: nameRef.current,
         expectedUrl: validUrl,
         mode: SERVICE_METADATA_APPLY_MODES.REPLACE,
       }),
@@ -408,12 +430,15 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       }),
     ]);
 
-    if (getLatestValidServiceUrl() !== validUrl) return;
+    if (metadataResult.stale || getLatestValidServiceUrl() !== validUrl) return;
 
-    if (metadataApplied || faviconApplied) {
+    if (metadataResult.applied || faviconApplied) {
       toast.success('Service details fetched');
       return;
     }
+
+    // Metadata existed, but user edits prevented applying any fields.
+    if (metadataResult.found) return;
 
     setErrors((current) => ({
       ...current,
