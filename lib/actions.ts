@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { collectConfigImportWarnings } from './config-import';
 import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
 import { fetchProvisionalServiceFavicon, fetchServiceFavicon } from './favicon';
+import { fetchServiceMetadata as fetchServiceMetadataForUrl, type ServiceMetadata } from './service-metadata';
 import {
   appSettingsSchema,
   categorySchema,
@@ -231,6 +232,33 @@ export async function fetchServiceIcon(formData: FormData): Promise<ActionResult
   } catch (error) {
     console.error('Fetch service icon error:', error);
     return { success: false, errors: [{ field: 'icon', message: 'Failed to fetch favicon' }] };
+  }
+}
+
+export async function fetchServiceMetadata(formData: FormData): Promise<ActionResult<ServiceMetadata>> {
+  try {
+    const serviceUrl = formData.get('url') as string;
+
+    const urlValidation = serviceSchema.shape.url.safeParse(serviceUrl);
+    if (!urlValidation.success) {
+      return {
+        success: false,
+        errors: [{ field: 'url', message: urlValidation.error.issues[0]?.message ?? 'Must be a valid URL' }],
+      };
+    }
+
+    const metadata = await fetchServiceMetadataForUrl(urlValidation.data);
+    if (!metadata) {
+      return {
+        success: false,
+        errors: [{ field: 'url', message: 'No title or description metadata found for this URL' }],
+      };
+    }
+
+    return { success: true, data: metadata };
+  } catch (error) {
+    console.error('Fetch service metadata error:', error);
+    return { success: false, errors: [{ field: 'url', message: 'Failed to fetch service details' }] };
   }
 }
 

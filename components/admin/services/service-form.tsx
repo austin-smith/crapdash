@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +19,13 @@ import { Field, FieldLabel, FieldError, FieldDescription } from '@/components/ui
 import { IconPicker } from '../icon-pickers/icon-picker';
 import { CategoryIcon } from '@/components/common/icons/category-icon';
 import { resolveLucideIconName } from '@/lib/lucide-icons';
-import { cleanupFetchedServiceIcon, createService, fetchServiceIcon, updateService, uploadServiceIcon } from '@/lib/actions';
-import { slugify } from '@/lib/utils';
+import { cleanupFetchedServiceIcon, createService, fetchServiceIcon, fetchServiceMetadata, updateService, uploadServiceIcon } from '@/lib/actions';
+import {
+  SERVICE_METADATA_APPLY_MODES,
+  getServiceMetadataDraftUpdates,
+  type ServiceMetadataApplyMode,
+} from '@/lib/service-metadata-apply';
+import { cn, slugify } from '@/lib/utils';
 import { ICON_TYPES, type Category, type IconConfig, type Service } from '@/lib/types';
 
 interface ServiceFormProps {
@@ -33,6 +39,11 @@ interface ServiceFormProps {
 interface FetchedIconRef {
   serviceId: string;
   iconPath: string;
+}
+
+interface FetchedServiceMetadata {
+  title?: string;
+  description?: string;
 }
 
 function parseServiceUrl(value: string): string | null {
@@ -67,11 +78,20 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingIcon, setIsFetchingIcon] = useState(false);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [iconVersion, setIconVersion] = useState(0);
   const [iconControl, setIconControl] = useState<'auto' | 'manual'>(service ? 'manual' : 'auto');
   const urlRef = useRef(url);
+  const nameRef = useRef(name);
+  const descriptionRef = useRef(description);
+  const hasUserEditedNameRef = useRef(!!service);
+  const hasUserEditedDescriptionRef = useRef(!!service);
   const lastAutoFetchKeyRef = useRef<string | null>(null);
+  const lastAutoMetadataFetchKeyRef = useRef<string | null>(null);
   const autoFetchRequestRef = useRef(0);
+  const metadataFetchRequestRef = useRef(0);
+  const autoFetchTimeoutRef = useRef<number | null>(null);
+  const metadataFetchTimeoutRef = useRef<number | null>(null);
   const provisionalIconRef = useRef<FetchedIconRef | null>(null);
 
   // Generate slug from name for new services
@@ -84,7 +104,84 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     urlRef.current = url;
   }, [url]);
 
+  useEffect(() => {
+    nameRef.current = name;
+  }, [name]);
+
+  useEffect(() => {
+    descriptionRef.current = description;
+  }, [description]);
+
   const getLatestValidServiceUrl = useCallback((): string | null => parseServiceUrl(urlRef.current), []);
+
+  const hasFillableMetadataFields = useCallback((): boolean => (
+    !hasUserEditedNameRef.current ||
+    nameRef.current.trim().length === 0 ||
+    !hasUserEditedDescriptionRef.current ||
+    descriptionRef.current.trim().length === 0
+  ), []);
+
+  const clearAutoIconFetchTimeout = useCallback(() => {
+    if (autoFetchTimeoutRef.current === null) return;
+    window.clearTimeout(autoFetchTimeoutRef.current);
+    autoFetchTimeoutRef.current = null;
+  }, []);
+
+  const clearAutoMetadataFetchTimeout = useCallback(() => {
+    if (metadataFetchTimeoutRef.current === null) return;
+    window.clearTimeout(metadataFetchTimeoutRef.current);
+    metadataFetchTimeoutRef.current = null;
+  }, []);
+
+  const invalidateAutoIconFetch = useCallback(() => {
+    clearAutoIconFetchTimeout();
+    autoFetchRequestRef.current += 1;
+    setIsFetchingIcon(false);
+  }, [clearAutoIconFetchTimeout]);
+
+  const invalidateAutoMetadataFetch = useCallback(() => {
+    clearAutoMetadataFetchTimeout();
+    metadataFetchRequestRef.current += 1;
+    setIsFetchingMetadata(false);
+  }, [clearAutoMetadataFetchTimeout]);
+
+  const applyFetchedMetadata = useCallback((
+    metadata: FetchedServiceMetadata,
+    mode: ServiceMetadataApplyMode
+  ): { name: boolean; description: boolean } => {
+    const updates = getServiceMetadataDraftUpdates(metadata, {
+      name: nameRef.current,
+      description: descriptionRef.current,
+      hasUserEditedName: hasUserEditedNameRef.current,
+      hasUserEditedDescription: hasUserEditedDescriptionRef.current,
+    }, mode);
+
+    if (updates.name !== undefined) {
+      nameRef.current = updates.name;
+      hasUserEditedNameRef.current = mode === SERVICE_METADATA_APPLY_MODES.REPLACE;
+      setName(updates.name);
+    }
+
+    if (updates.description !== undefined) {
+      descriptionRef.current = updates.description;
+      hasUserEditedDescriptionRef.current = mode === SERVICE_METADATA_APPLY_MODES.REPLACE;
+      setDescription(updates.description);
+    }
+
+    const appliedName = updates.name !== undefined;
+    const appliedDescription = updates.description !== undefined;
+
+    if (appliedName || appliedDescription) {
+      setErrors((current) => {
+        const next = { ...current };
+        if (appliedName) delete next.name;
+        if (appliedDescription) delete next.description;
+        return next;
+      });
+    }
+
+    return { name: appliedName, description: appliedDescription };
+  }, []);
 
   const cleanupFetchedIcon = useCallback((iconRef: FetchedIconRef) => {
     const formData = new FormData();
@@ -127,6 +224,86 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     return result.success ? result.data : null;
   };
 
+  const handleFetchServiceMetadata = useCallback(async ({
+    silent = false,
+    expectedUrl,
+    mode = SERVICE_METADATA_APPLY_MODES.REPLACE,
+  }: {
+    silent?: boolean;
+    expectedUrl?: string;
+    mode?: ServiceMetadataApplyMode;
+  } = {}): Promise<boolean> => {
+    if (!url || isSubmitting || isFetchingMetadata) return false;
+    const validUrl = getValidServiceUrl();
+    if (!validUrl) return false;
+    invalidateAutoMetadataFetch();
+
+    const requestId = metadataFetchRequestRef.current + 1;
+    metadataFetchRequestRef.current = requestId;
+    setIsFetchingMetadata(true);
+
+    if (!silent) {
+      setErrors((current) => {
+        const next = { ...current };
+        delete next.url;
+        return next;
+      });
+    }
+
+    const formData = new FormData();
+    formData.append('url', validUrl);
+
+    try {
+      const result = await fetchServiceMetadata(formData);
+      if (
+        metadataFetchRequestRef.current !== requestId ||
+        getLatestValidServiceUrl() !== validUrl ||
+        (silent && expectedUrl && validUrl !== expectedUrl)
+      ) {
+        return false;
+      }
+
+      if (result.success) {
+        const applied = applyFetchedMetadata(result.data, mode);
+
+        if (!silent) {
+          if (applied.name || applied.description) {
+            toast.success('Service details fetched');
+          } else {
+            toast.info('Service details found; existing fields were kept');
+          }
+        }
+        return applied.name || applied.description;
+      } else if (!silent) {
+        const errorMap: Record<string, string> = {};
+        result.errors.forEach((error) => {
+          errorMap[error.field] = error.message;
+        });
+        setErrors((current) => ({ ...current, ...errorMap }));
+        toast.error(result.errors[0]?.message ?? 'Failed to fetch service details');
+      }
+      return false;
+    } catch {
+      if (!silent) {
+        setErrors((current) => ({ ...current, url: 'Failed to fetch service details' }));
+        toast.error('Failed to fetch service details');
+      }
+      return false;
+    } finally {
+      if (metadataFetchRequestRef.current === requestId) {
+        setIsFetchingMetadata(false);
+      }
+    }
+  }, [
+    applyFetchedMetadata,
+    getLatestValidServiceUrl,
+    getValidServiceUrl,
+    isFetchingMetadata,
+    isSubmitting,
+    invalidateAutoMetadataFetch,
+    url,
+  ]);
+
   const handleFetchFavicon = useCallback(async ({
     silent = false,
     markManual = true,
@@ -135,11 +312,12 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     silent?: boolean;
     markManual?: boolean;
     expectedUrl?: string;
-  } = {}) => {
-    if (!url || isSubmitting || isFetchingIcon) return;
+  } = {}): Promise<boolean> => {
+    if (!url || isSubmitting || isFetchingIcon) return false;
     const validUrl = getValidServiceUrl();
-    if (!validUrl) return;
-    const iconFetchId = getIconFetchId(serviceId, validUrl);
+    if (!validUrl) return false;
+    invalidateAutoIconFetch();
+    const iconFetchId = getIconFetchId('', validUrl);
 
     if (markManual) {
       setIconControl('manual');
@@ -164,7 +342,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         if (result.success) {
           cleanupFetchedIcon({ serviceId: iconFetchId, iconPath: result.data });
         }
-        return;
+        return false;
       }
 
       if (result.success) {
@@ -175,6 +353,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         if (!silent) {
           toast.success('Favicon fetched');
         }
+        return true;
       } else if (!silent) {
         const errorMap: Record<string, string> = {};
         result.errors.forEach((error) => {
@@ -183,11 +362,13 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         setErrors((current) => ({ ...current, ...errorMap }));
         toast.error(result.errors[0]?.message ?? 'Failed to fetch favicon');
       }
+      return false;
     } catch {
       if (!silent) {
         setErrors((current) => ({ ...current, icon: 'Failed to fetch favicon' }));
         toast.error('Failed to fetch favicon');
       }
+      return false;
     } finally {
       setIsFetchingIcon(false);
     }
@@ -197,8 +378,45 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     getValidServiceUrl,
     isFetchingIcon,
     isSubmitting,
-    serviceId,
+    invalidateAutoIconFetch,
     trackProvisionalIcon,
+    url,
+  ]);
+
+  const handleFetchServiceDetails = useCallback(async () => {
+    if (!url || isSubmitting || isFetchingMetadata || isFetchingIcon) return;
+    const validUrl = getValidServiceUrl();
+    if (!validUrl) return;
+
+    setErrors((current) => {
+      const next = { ...current };
+      delete next.icon;
+      delete next.url;
+      return next;
+    });
+
+    const [metadataApplied, faviconApplied] = await Promise.all([
+      handleFetchServiceMetadata({ silent: true, mode: SERVICE_METADATA_APPLY_MODES.REPLACE }),
+      handleFetchFavicon({ silent: true, markManual: true }),
+    ]);
+
+    if (metadataApplied || faviconApplied) {
+      toast.success('Service details fetched');
+      return;
+    }
+
+    setErrors((current) => ({
+      ...current,
+      url: 'No service details found for this URL',
+    }));
+    toast.error('No service details found for this URL');
+  }, [
+    getValidServiceUrl,
+    handleFetchFavicon,
+    handleFetchServiceMetadata,
+    isFetchingIcon,
+    isFetchingMetadata,
+    isSubmitting,
     url,
   ]);
 
@@ -208,11 +426,15 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     const validUrl = getValidServiceUrl();
     if (!validUrl) return;
 
-    const iconFetchId = getIconFetchId(serviceId, validUrl);
+    const iconFetchId = getIconFetchId('', validUrl);
     const fetchKey = `${iconFetchId}:${validUrl}`;
     if (lastAutoFetchKeyRef.current === fetchKey) return;
 
     const timeout = window.setTimeout(() => {
+      if (autoFetchTimeoutRef.current === timeout) {
+        autoFetchTimeoutRef.current = null;
+      }
+
       const requestId = autoFetchRequestRef.current + 1;
       autoFetchRequestRef.current = requestId;
       setIsFetchingIcon(true);
@@ -221,52 +443,139 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       formData.append('serviceId', iconFetchId);
       formData.append('url', validUrl);
 
-      void fetchServiceIcon(formData).then((result) => {
-        if (
-          autoFetchRequestRef.current !== requestId ||
-          getLatestValidServiceUrl() !== validUrl
-        ) {
-          if (result.success) {
-            cleanupFetchedIcon({ serviceId: iconFetchId, iconPath: result.data });
+      void (async () => {
+        try {
+          const result = await fetchServiceIcon(formData);
+          if (
+            autoFetchRequestRef.current !== requestId ||
+            getLatestValidServiceUrl() !== validUrl
+          ) {
+            if (result.success) {
+              cleanupFetchedIcon({ serviceId: iconFetchId, iconPath: result.data });
+            }
+            return;
           }
-          return;
-        }
 
-        lastAutoFetchKeyRef.current = fetchKey;
+          lastAutoFetchKeyRef.current = fetchKey;
 
-        if (result.success) {
-          trackProvisionalIcon({ serviceId: iconFetchId, iconPath: result.data });
-          setPendingIconFile(null);
-          setIcon({ type: ICON_TYPES.IMAGE, value: result.data });
-          setIconVersion((value) => value + 1);
+          if (result.success) {
+            trackProvisionalIcon({ serviceId: iconFetchId, iconPath: result.data });
+            setPendingIconFile(null);
+            setIcon({ type: ICON_TYPES.IMAGE, value: result.data });
+            setIconVersion((value) => value + 1);
+          }
+        } catch {
+          // Auto-fetch is best-effort; manual fetch reports errors to the user.
+        } finally {
+          if (autoFetchRequestRef.current === requestId) {
+            setIsFetchingIcon(false);
+          }
         }
-      }).finally(() => {
-        if (autoFetchRequestRef.current === requestId) {
-          setIsFetchingIcon(false);
-        }
-      });
+      })();
     }, 600);
+    autoFetchTimeoutRef.current = timeout;
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      if (autoFetchTimeoutRef.current === timeout) {
+        autoFetchTimeoutRef.current = null;
+      }
+    };
   }, [
     cleanupFetchedIcon,
     service,
     iconControl,
     pendingIconFile,
     isSubmitting,
-    serviceId,
     getLatestValidServiceUrl,
     getValidServiceUrl,
     trackProvisionalIcon,
+  ]);
+
+  useEffect(() => {
+    if (service || isSubmitting) return;
+
+    const validUrl = getValidServiceUrl();
+    if (!validUrl) return;
+    if (!hasFillableMetadataFields()) return;
+
+    const fetchKey = validUrl;
+    if (lastAutoMetadataFetchKeyRef.current === fetchKey) return;
+
+    const timeout = window.setTimeout(() => {
+      if (metadataFetchTimeoutRef.current === timeout) {
+        metadataFetchTimeoutRef.current = null;
+      }
+
+      const requestId = metadataFetchRequestRef.current + 1;
+      metadataFetchRequestRef.current = requestId;
+      setIsFetchingMetadata(true);
+
+      const formData = new FormData();
+      formData.append('url', validUrl);
+
+      void (async () => {
+        try {
+          const result = await fetchServiceMetadata(formData);
+          if (
+            metadataFetchRequestRef.current !== requestId ||
+            getLatestValidServiceUrl() !== validUrl
+          ) {
+            return;
+          }
+
+          lastAutoMetadataFetchKeyRef.current = fetchKey;
+
+          if (result.success) {
+            applyFetchedMetadata(result.data, SERVICE_METADATA_APPLY_MODES.FILL_EMPTY);
+          }
+        } catch {
+          // Auto-fetch is best-effort; manual fetch reports errors to the user.
+        } finally {
+          if (metadataFetchRequestRef.current === requestId) {
+            setIsFetchingMetadata(false);
+          }
+        }
+      })();
+    }, 600);
+    metadataFetchTimeoutRef.current = timeout;
+
+    return () => {
+      window.clearTimeout(timeout);
+      if (metadataFetchTimeoutRef.current === timeout) {
+        metadataFetchTimeoutRef.current = null;
+      }
+    };
+  }, [
+    applyFetchedMetadata,
+    hasFillableMetadataFields,
+    service,
+    isSubmitting,
+    getLatestValidServiceUrl,
+    getValidServiceUrl,
   ]);
 
   const handleUrlChange = (nextUrl: string) => {
     urlRef.current = nextUrl;
     setUrl(nextUrl);
 
+    if (!service) {
+      invalidateAutoMetadataFetch();
+      lastAutoMetadataFetchKeyRef.current = null;
+
+      if (!hasUserEditedNameRef.current) {
+        nameRef.current = '';
+        setName('');
+      }
+      if (!hasUserEditedDescriptionRef.current) {
+        descriptionRef.current = '';
+        setDescription('');
+      }
+    }
+
     if (service || iconControl !== 'auto') return;
 
-    autoFetchRequestRef.current += 1;
+    invalidateAutoIconFetch();
     lastAutoFetchKeyRef.current = null;
     if (icon?.type === ICON_TYPES.IMAGE) {
       releaseProvisionalIcon();
@@ -275,8 +584,20 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     }
   };
 
+  const handleNameChange = (nextName: string) => {
+    hasUserEditedNameRef.current = true;
+    nameRef.current = nextName;
+    setName(nextName);
+  };
+
+  const handleDescriptionChange = (nextDescription: string) => {
+    hasUserEditedDescriptionRef.current = true;
+    descriptionRef.current = nextDescription;
+    setDescription(nextDescription);
+  };
+
   const handleIconValueChange = (nextIcon: IconConfig | undefined) => {
-    autoFetchRequestRef.current += 1;
+    invalidateAutoIconFetch();
     releaseProvisionalIcon();
     setIconControl('manual');
     setIcon(nextIcon);
@@ -284,7 +605,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
 
   const handleIconFileSelect = (file: File | null) => {
     if (file) {
-      autoFetchRequestRef.current += 1;
+      invalidateAutoIconFetch();
       releaseProvisionalIcon();
       setIconControl('manual');
     }
@@ -292,7 +613,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
   };
 
   const handleIconClear = () => {
-    autoFetchRequestRef.current += 1;
+    invalidateAutoIconFetch();
     releaseProvisionalIcon();
     setIconControl('manual');
     setIcon(undefined);
@@ -300,6 +621,8 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    invalidateAutoIconFetch();
+    invalidateAutoMetadataFetch();
     setIsSubmitting(true);
     setErrors({});
 
@@ -339,6 +662,8 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     if (result.success) {
       releaseProvisionalIcon(result.data.icon?.type === ICON_TYPES.IMAGE ? result.data.icon.value : undefined);
       toast.success(service ? 'Service updated' : 'Service created');
+      nameRef.current = '';
+      descriptionRef.current = '';
       setName('');
       setDescription('');
       setUrl('');
@@ -346,6 +671,8 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
       setIcon(undefined);
       setPendingIconFile(null);
       setIconControl('auto');
+      hasUserEditedNameRef.current = false;
+      hasUserEditedDescriptionRef.current = false;
       setActive(true);
       onSuccess?.();
     } else {
@@ -361,11 +688,36 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <Field data-invalid={!!errors.url}>
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel>URL *</FieldLabel>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleFetchServiceDetails()}
+            disabled={!getValidServiceUrl() || isSubmitting || isFetchingMetadata || isFetchingIcon}
+          >
+            <RefreshCw data-icon="inline-start" className={cn((isFetchingMetadata || isFetchingIcon) && 'animate-spin')} />
+            {isFetchingMetadata || isFetchingIcon ? 'Fetching...' : 'Fetch details'}
+          </Button>
+        </div>
+        <Input
+          value={url}
+          onChange={(e) => handleUrlChange(e.target.value)}
+          placeholder="https://example.com, http://192.168.1.1:8080"
+          type="url"
+          disabled={isSubmitting}
+          className="font-mono text-xs"
+        />
+        {errors.url && <FieldError>{errors.url}</FieldError>}
+      </Field>
+
       <Field data-invalid={!!errors.name}>
         <FieldLabel>Name *</FieldLabel>
         <Input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Enter service name"
           disabled={isSubmitting}
         />
@@ -379,26 +731,12 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
         <FieldLabel>Description *</FieldLabel>
         <Textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => handleDescriptionChange(e.target.value)}
           placeholder="Enter service description"
           rows={3}
           disabled={isSubmitting}
         />
         {errors.description && <FieldError>{errors.description}</FieldError>}
-      </Field>
-
-      <Field data-invalid={!!errors.url}>
-        <FieldLabel>URL *</FieldLabel>
-        <Input
-          value={url}
-          onChange={(e) => handleUrlChange(e.target.value)}
-          placeholder="https://example.com, http://192.168.1.1:8080"
-          type="url"
-          disabled={isSubmitting}
-          className="font-mono text-xs"
-        />
-        <FieldDescription>Full URL including https:// or http://</FieldDescription>
-        {errors.url && <FieldError>{errors.url}</FieldError>}
       </Field>
 
       <Field data-invalid={!!errors.categoryId}>

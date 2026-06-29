@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Globe, Upload, X, ImageIcon } from 'lucide-react';
+import { RefreshCw, Upload, X, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -147,7 +147,7 @@ export function IconUpload({
                   size="sm"
                   onClick={openFilePicker}
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload data-icon="inline-start" />
                   Upload file
                 </Button>
 
@@ -159,7 +159,7 @@ export function IconUpload({
                     onClick={onFetchFromUrl}
                     disabled={fetchDisabled || isFetching}
                   >
-                    <Globe className="w-4 h-4" />
+                    <RefreshCw data-icon="inline-start" className={cn(isFetching && 'animate-spin')} />
                     {isFetching ? 'Fetching...' : 'Fetch favicon'}
                   </Button>
                 )}
@@ -171,7 +171,7 @@ export function IconUpload({
                     size="sm"
                     onClick={handleClear}
                   >
-                    <X className="w-4 h-4" />
+                    <X data-icon="inline-start" />
                     Remove
                   </Button>
                 )}
