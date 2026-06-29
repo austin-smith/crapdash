@@ -121,4 +121,28 @@ describe('favicon fetching', () => {
     await expect(fetchServiceFavicon('https://example.com/', 'example')).resolves.toBe('icons/example.png');
     await expect(readFile(path.join(getIconsDir(), 'example.png'))).resolves.toEqual(png);
   });
+
+  it('decodes entity references in icon attributes', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" />';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url === 'https://example.com/') {
+        return response('<link rel="icon" href="/icons/a&amp;b.svg" type="image/svg+xml">', {
+          headers: { 'content-type': 'text/html' },
+        });
+      }
+
+      if (url === 'https://example.com/icons/a&b.svg') {
+        return response(svg, {
+          headers: { 'content-type': 'image/svg+xml' },
+        });
+      }
+
+      return response('', { status: 404 });
+    });
+
+    await expect(fetchServiceFavicon('https://example.com/', 'example')).resolves.toBe('icons/example.svg');
+    await expect(readFile(path.join(getIconsDir(), 'example.svg'), 'utf-8')).resolves.toBe(svg);
+  });
 });

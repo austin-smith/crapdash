@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { ICON_TYPES } from './types';
 import { resolveLucideIconName } from './lucide-icons';
 
+export const SERVICE_NAME_MAX_LENGTH = 100;
+export const SERVICE_DESCRIPTION_MAX_LENGTH = 500;
+
 export const slugSchema = z.string().regex(
   /^[a-z0-9-]+$/i,
   'Slug must use letters, numbers, or dashes'
@@ -63,8 +66,8 @@ export const categoryCreateSchema = categorySchema.extend({
 });
 
 export const serviceSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  description: z.string().min(1, 'Description is required').max(500, 'Description must be less than 500 characters'),
+  name: z.string().min(1, 'Name is required').max(SERVICE_NAME_MAX_LENGTH, 'Name must be less than 100 characters'),
+  description: z.string().min(1, 'Description is required').max(SERVICE_DESCRIPTION_MAX_LENGTH, 'Description must be less than 500 characters'),
   url: z.string().url('Must be a valid URL'),
   categoryId: z.string().min(1, 'Category is required'),
   icon: iconConfigSchema.optional(),
