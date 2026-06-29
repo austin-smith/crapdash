@@ -15,23 +15,6 @@ export function normalizeContentType(value: string | null): string {
   return value?.toLowerCase().split(';')[0]?.trim() ?? '';
 }
 
-export function parseAttributes(tag: string): Record<string, string> {
-  const attrs: Record<string, string> = {};
-  const attrPattern = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
-
-  for (const match of tag.matchAll(attrPattern)) {
-    const [, rawName, doubleQuoted, singleQuoted, unquoted] = match;
-    if (!rawName) continue;
-
-    const name = rawName.toLowerCase();
-    if (name === 'link' || name === 'meta' || name === 'title') continue;
-
-    attrs[name] = doubleQuoted ?? singleQuoted ?? unquoted ?? '';
-  }
-
-  return attrs;
-}
-
 export async function fetchWithRedirects(
   url: URL,
   init: RequestInit,

@@ -76,6 +76,31 @@ describe('service metadata', () => {
     });
   });
 
+  it('decodes standard named entities with the HTML parser', () => {
+    const html = `
+      <TITLE>Tom &amp; Jerry&rsquo;s Monitor &mdash; Live</TITLE>
+      <META NAME="description" CONTENT="Status &hellip; 5 &lt; 6">
+    `;
+
+    expect(parseServiceMetadata(html)).toEqual({
+      title: 'Tom & Jerry\u2019s Monitor \u2014 Live',
+      description: 'Status \u2026 5 < 6',
+    });
+  });
+
+  it('recovers metadata from loose real-world HTML', () => {
+    const html = `
+      <meta content="Description before title &copy;" name="description">
+      <title>
+        Loose&nbsp;title
+    `;
+
+    expect(parseServiceMetadata(html)).toEqual({
+      title: 'Loose title',
+      description: 'Description before title \u00a9',
+    });
+  });
+
   it('resolves metadata from the final page after redirects', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input);

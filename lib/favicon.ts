@@ -1,4 +1,5 @@
 import path from 'path';
+import { parse, type DefaultTreeAdapterTypes } from 'parse5';
 import {
   MAX_FILE_SIZE,
   getImageExtensionForContentType,
@@ -13,7 +14,6 @@ import {
   getTimeoutSignal,
   isHttpUrl,
   normalizeContentType,
-  parseAttributes,
   readResponseBuffer,
 } from './service-url-fetch';
 
@@ -25,14 +25,40 @@ interface IconCandidate {
   source: 'html' | 'fallback';
 }
 
+function isElement(node: DefaultTreeAdapterTypes.Node): node is DefaultTreeAdapterTypes.Element {
+  return 'tagName' in node;
+}
+
+function getAttribute(node: DefaultTreeAdapterTypes.Element, name: string): string | undefined {
+  const attr = node.attrs.find((item) => item.name.toLowerCase() === name);
+  return attr?.value;
+}
+
+function findElements(
+  node: DefaultTreeAdapterTypes.Node,
+  tagName: string,
+  results: DefaultTreeAdapterTypes.Element[] = []
+): DefaultTreeAdapterTypes.Element[] {
+  if (isElement(node) && node.tagName === tagName) {
+    results.push(node);
+  }
+
+  if ('childNodes' in node) {
+    for (const child of node.childNodes) {
+      findElements(child, tagName, results);
+    }
+  }
+
+  return results;
+}
+
 function parseIconCandidates(html: string, baseUrl: URL): IconCandidate[] {
   const candidates: IconCandidate[] = [];
-  const linkPattern = /<link\b[^>]*>/gi;
+  const document = parse(html);
 
-  for (const match of html.matchAll(linkPattern)) {
-    const attrs = parseAttributes(match[0]);
-    const rel = attrs.rel?.toLowerCase() ?? '';
-    const href = attrs.href;
+  for (const link of findElements(document, 'link')) {
+    const rel = getAttribute(link, 'rel')?.toLowerCase() ?? '';
+    const href = getAttribute(link, 'href');
 
     if (!href || !rel.split(/\s+/).some((part) => part === 'icon' || part.startsWith('apple-touch-icon'))) {
       continue;
@@ -45,8 +71,8 @@ function parseIconCandidates(html: string, baseUrl: URL): IconCandidate[] {
       candidates.push({
         url,
         rel,
-        type: attrs.type,
-        sizes: attrs.sizes,
+        type: getAttribute(link, 'type'),
+        sizes: getAttribute(link, 'sizes'),
         source: 'html',
       });
     } catch {

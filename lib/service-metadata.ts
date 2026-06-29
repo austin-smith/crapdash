@@ -1,48 +1,14 @@
+import { parse, type DefaultTreeAdapterTypes } from 'parse5';
 import { SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './validations';
-import { fetchPageHtml, isHttpUrl, parseAttributes } from './service-url-fetch';
+import { fetchPageHtml, isHttpUrl } from './service-url-fetch';
 
 export interface ServiceMetadata {
   title?: string;
   description?: string;
 }
 
-const HTML_ENTITIES: Record<string, string> = {
-  amp: '&',
-  apos: "'",
-  gt: '>',
-  lt: '<',
-  nbsp: ' ',
-  quot: '"',
-};
-
-function decodeHtmlEntities(value: string): string {
-  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]+);/gi, (entity, rawName: string) => {
-    const name = rawName.toLowerCase();
-
-    if (name.startsWith('#x')) {
-      const codePoint = Number.parseInt(name.slice(2), 16);
-      try {
-        return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
-      } catch {
-        return entity;
-      }
-    }
-
-    if (name.startsWith('#')) {
-      const codePoint = Number.parseInt(name.slice(1), 10);
-      try {
-        return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
-      } catch {
-        return entity;
-      }
-    }
-
-    return HTML_ENTITIES[name] ?? entity;
-  });
-}
-
 function normalizeMetadataText(value: string, maxLength: number): string | undefined {
-  const normalized = decodeHtmlEntities(value)
+  const normalized = value
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -50,30 +16,72 @@ function normalizeMetadataText(value: string, maxLength: number): string | undef
   return normalized.length > maxLength ? normalized.slice(0, maxLength).trim() : normalized;
 }
 
-function extractTitle(html: string): string | undefined {
-  const match = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html);
-  return match?.[1] ? normalizeMetadataText(match[1], SERVICE_NAME_MAX_LENGTH) : undefined;
+function isElement(node: DefaultTreeAdapterTypes.Node): node is DefaultTreeAdapterTypes.Element {
+  return 'tagName' in node;
 }
 
-function extractDescription(html: string): string | undefined {
-  const metaPattern = /<meta\b[^>]*>/gi;
+function isTextNode(node: DefaultTreeAdapterTypes.Node): node is DefaultTreeAdapterTypes.TextNode {
+  return node.nodeName === '#text' && 'value' in node;
+}
 
-  for (const match of html.matchAll(metaPattern)) {
-    const attrs = parseAttributes(match[0]);
-    if (attrs.name?.toLowerCase() !== 'description') continue;
-    if (!attrs.content) continue;
+function getAttribute(node: DefaultTreeAdapterTypes.Element, name: string): string | undefined {
+  const attr = node.attrs.find((item) => item.name.toLowerCase() === name);
+  return attr?.value;
+}
 
-    const description = normalizeMetadataText(attrs.content, SERVICE_DESCRIPTION_MAX_LENGTH);
-    if (description) return description;
+function getTextContent(node: DefaultTreeAdapterTypes.Node): string {
+  if (isTextNode(node)) {
+    return node.value;
+  }
+
+  if ('childNodes' in node) {
+    return node.childNodes.map(getTextContent).join('');
+  }
+
+  return '';
+}
+
+function findElement(
+  node: DefaultTreeAdapterTypes.Node,
+  predicate: (element: DefaultTreeAdapterTypes.Element) => boolean
+): DefaultTreeAdapterTypes.Element | undefined {
+  if (isElement(node) && predicate(node)) {
+    return node;
+  }
+
+  if (!('childNodes' in node)) {
+    return undefined;
+  }
+
+  for (const child of node.childNodes) {
+    const match = findElement(child, predicate);
+    if (match) return match;
   }
 
   return undefined;
 }
 
+function extractTitle(document: DefaultTreeAdapterTypes.Document): string | undefined {
+  const title = findElement(document, (element) => element.tagName === 'title');
+  return title ? normalizeMetadataText(getTextContent(title), SERVICE_NAME_MAX_LENGTH) : undefined;
+}
+
+function extractDescription(document: DefaultTreeAdapterTypes.Document): string | undefined {
+  const meta = findElement(document, (element) => {
+    if (element.tagName !== 'meta') return false;
+    return getAttribute(element, 'name')?.toLowerCase() === 'description';
+  });
+
+  const content = meta ? getAttribute(meta, 'content') : undefined;
+  return content ? normalizeMetadataText(content, SERVICE_DESCRIPTION_MAX_LENGTH) : undefined;
+}
+
 export function parseServiceMetadata(html: string): ServiceMetadata {
+  const document = parse(html);
+
   return {
-    title: extractTitle(html),
-    description: extractDescription(html),
+    title: extractTitle(document),
+    description: extractDescription(document),
   };
 }
 
