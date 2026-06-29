@@ -396,9 +396,19 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     });
 
     const [metadataApplied, faviconApplied] = await Promise.all([
-      handleFetchServiceMetadata({ silent: true, mode: SERVICE_METADATA_APPLY_MODES.REPLACE }),
-      handleFetchFavicon({ silent: true, markManual: true }),
+      handleFetchServiceMetadata({
+        silent: true,
+        expectedUrl: validUrl,
+        mode: SERVICE_METADATA_APPLY_MODES.REPLACE,
+      }),
+      handleFetchFavicon({
+        silent: true,
+        expectedUrl: validUrl,
+        markManual: true,
+      }),
     ]);
+
+    if (getLatestValidServiceUrl() !== validUrl) return;
 
     if (metadataApplied || faviconApplied) {
       toast.success('Service details fetched');
@@ -411,6 +421,7 @@ export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey
     }));
     toast.error('No service details found for this URL');
   }, [
+    getLatestValidServiceUrl,
     getValidServiceUrl,
     handleFetchFavicon,
     handleFetchServiceMetadata,
