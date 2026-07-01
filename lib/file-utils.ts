@@ -159,7 +159,7 @@ export async function promoteProvisionalIcon(iconPath: string, serviceId: string
 export async function copyIconToService(
   iconPath: string,
   serviceId: string,
-  options: { avoidIconPath?: string } = {}
+  options: { reservedIconPaths?: Set<string> } = {}
 ): Promise<string> {
   if (!isManagedIconPath(iconPath)) {
     throw new Error('Only managed icon paths can be copied');
@@ -167,11 +167,13 @@ export async function copyIconToService(
 
   const filename = path.basename(iconPath);
   const ext = path.extname(filename).toLowerCase();
-  const defaultTargetFilename = `${serviceId}${ext}`;
-  const targetFilename =
-    options.avoidIconPath === `icons/${defaultTargetFilename}`
-      ? `${serviceId}-${randomUUID()}${ext}`
-      : defaultTargetFilename;
+  const reservedIconPaths = options.reservedIconPaths ?? new Set<string>();
+  let targetFilename = `${serviceId}${ext}`;
+
+  while (reservedIconPaths.has(`icons/${targetFilename}`)) {
+    targetFilename = `${serviceId}-${randomUUID()}${ext}`;
+  }
+
   const targetBaseName = path.parse(targetFilename).name;
   const buffer = await fs.readFile(getIconFilePath(filename));
   return writeIconBuffer(buffer, targetFilename, targetBaseName);

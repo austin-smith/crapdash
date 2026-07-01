@@ -1,7 +1,7 @@
 import { chmod, readFile, stat, writeFile } from 'fs/promises';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanupFetchedServiceIcon, createService, deleteService, updateService } from '@/lib/actions';
+import { cleanupFetchedServiceIcon, createService, deleteService, updateAppSettings, updateService } from '@/lib/actions';
 import { getConfigPath, getDataDir, getIconsDir } from '@/lib/paths';
 import { ICON_TYPES, type DashboardConfig } from '@/lib/types';
 import { createTestDataDir, removeTestDataDir } from './test-data-dir';
@@ -152,6 +152,86 @@ describe('service icon actions', () => {
     expect(await fileExists(duplicateIconFilename)).toBe(false);
   });
 
+  it('does not overwrite another service icon when the default copy destination is already referenced', async () => {
+    await writeConfig({
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [
+        {
+          id: 'grafana',
+          name: 'Grafana',
+          description: 'Dashboards',
+          url: 'https://grafana.example.com',
+          categoryId: 'infra',
+          icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+          active: true,
+        },
+        {
+          id: 'metrics',
+          name: 'Metrics',
+          description: 'Metrics',
+          url: 'https://metrics.example.com',
+          categoryId: 'infra',
+          icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' },
+          active: true,
+        },
+      ],
+    });
+    await writeIcon('grafana.png', 'source icon');
+    await writeIcon('grafana-copy.png', 'reserved icon');
+
+    const result = await createService({
+      id: 'grafana-copy',
+      name: 'Grafana (Copy)',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.icon?.type).toBe(ICON_TYPES.IMAGE);
+    expect(result.data.icon?.value).toMatch(/^icons\/grafana-copy-[a-f0-9-]+\.png$/);
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('reserved icon');
+  });
+
+  it('does not overwrite the app logo when the default copy destination is already referenced by it', async () => {
+    await writeConfig({
+      appLogo: { type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' },
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+        active: true,
+      }],
+    });
+    await writeIcon('grafana.png', 'source icon');
+    await writeIcon('grafana-copy.png', 'app logo');
+
+    const result = await createService({
+      id: 'grafana-copy',
+      name: 'Grafana (Copy)',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.icon?.type).toBe(ICON_TYPES.IMAGE);
+    expect(result.data.icon?.value).toMatch(/^icons\/grafana-copy-[a-f0-9-]+\.png$/);
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('app logo');
+  });
+
   it('creates the service without an icon when a copied image source file is missing', async () => {
     await writeConfig({
       categories: [{ id: 'infra', name: 'Infrastructure' }],
@@ -184,6 +264,88 @@ describe('service icon actions', () => {
 
     const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
     expect(savedConfig.services[1]?.icon).toBeUndefined();
+  });
+
+  it('does not delete a service icon file that is still referenced by the app logo', async () => {
+    await writeConfig({
+      appLogo: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+        active: true,
+      }],
+    });
+    await writeIcon('shared.png', 'shared icon');
+
+    const result = await deleteService('grafana');
+
+    expect(result.success).toBe(true);
+    await expect(readFile(path.join(getIconsDir(), 'shared.png'), 'utf-8')).resolves.toBe('shared icon');
+  });
+
+  it('does not delete an updated service icon file that is still referenced by another service', async () => {
+    await writeConfig({
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [
+        {
+          id: 'grafana',
+          name: 'Grafana',
+          description: 'Dashboards',
+          url: 'https://grafana.example.com',
+          categoryId: 'infra',
+          icon: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+          active: true,
+        },
+        {
+          id: 'metrics',
+          name: 'Metrics',
+          description: 'Metrics',
+          url: 'https://metrics.example.com',
+          categoryId: 'infra',
+          icon: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+          active: true,
+        },
+      ],
+    });
+    await writeIcon('shared.png', 'shared icon');
+
+    const result = await updateService('grafana', {
+      name: 'Grafana',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      active: true,
+    });
+
+    expect(result.success).toBe(true);
+    await expect(readFile(path.join(getIconsDir(), 'shared.png'), 'utf-8')).resolves.toBe('shared icon');
+  });
+
+  it('does not delete an app logo file that is still referenced by a service', async () => {
+    await writeConfig({
+      appLogo: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/shared.png' },
+        active: true,
+      }],
+    });
+    await writeIcon('shared.png', 'shared icon');
+
+    const result = await updateAppSettings({ appLogo: null });
+
+    expect(result.success).toBe(true);
+    await expect(readFile(path.join(getIconsDir(), 'shared.png'), 'utf-8')).resolves.toBe('shared icon');
   });
 
   it('restores previous icon files when update config persistence fails after promotion', async () => {

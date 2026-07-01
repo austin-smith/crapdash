@@ -72,4 +72,18 @@ describe('file-utils icon persistence', () => {
     await expect(readFile(path.join(getIconsDir(), 'grafana.png'), 'utf-8')).resolves.toBe('source icon');
     await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
   });
+
+  it('chooses a unique target when the default copy destination is reserved', async () => {
+    await writeIcon('grafana.png', 'source icon');
+    await writeIcon('grafana-copy.png', 'reserved icon');
+
+    const copiedPath = await copyIconToService('icons/grafana.png', 'grafana-copy', {
+      reservedIconPaths: new Set(['icons/grafana-copy.png']),
+    });
+    const copiedFilename = path.basename(copiedPath);
+
+    expect(copiedPath).toMatch(/^icons\/grafana-copy-[a-f0-9-]+\.png$/);
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('reserved icon');
+    await expect(readFile(path.join(getIconsDir(), copiedFilename), 'utf-8')).resolves.toBe('source icon');
+  });
 });
