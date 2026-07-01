@@ -1,8 +1,10 @@
 import { ServiceCardContext } from '@/components/common/context-menus/service-card-context';
-import { ServiceCard } from './service-card';
 import { CategoryIcon } from '@/components/common/icons/category-icon';
+import { HighlightedText } from '@/components/common/highlighted-text';
+import { getDashboardServiceElementId } from '@/lib/dashboard-dom';
 import { cn } from '@/lib/utils';
 import { LAYOUTS, type Category, type Service, type DashboardLayout } from '@/lib/types';
+import { ServiceCard } from './service-card';
 
 interface CategoryLayoutProps {
   category: Category;
@@ -12,9 +14,21 @@ interface CategoryLayoutProps {
   onEditService: (service: Service) => void;
   onDeleteService: (service: Service) => void;
   cacheKey?: number;
+  searchTokens?: string[];
+  selectedServiceId?: string | null;
 }
 
-export function CategoryLayout({ category, services, layout, expandOnHover, onEditService, onDeleteService, cacheKey }: CategoryLayoutProps) {
+export function CategoryLayout({
+  category,
+  services,
+  layout,
+  expandOnHover,
+  onEditService,
+  onDeleteService,
+  cacheKey,
+  searchTokens = [],
+  selectedServiceId,
+}: CategoryLayoutProps) {
   if (services.length === 0) {
     return null;
   }
@@ -30,7 +44,7 @@ export function CategoryLayout({ category, services, layout, expandOnHover, onEd
         )}
       >
         <CategoryIcon icon={category.icon} className="h-4 w-4 opacity-70" />
-        {category.name}
+        <HighlightedText text={category.name} tokens={searchTokens} />
       </h2>
       <div
         className={
@@ -51,6 +65,9 @@ export function CategoryLayout({ category, services, layout, expandOnHover, onEd
               service={service}
               expandOnHover={expandOnHover}
               cacheKey={cacheKey}
+              searchTokens={searchTokens}
+              isKeyboardSelected={service.id === selectedServiceId}
+              domId={getDashboardServiceElementId(service.id)}
             />
           </ServiceCardContext>
         ))}

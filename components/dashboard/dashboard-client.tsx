@@ -1,28 +1,31 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+import { Computer } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Computer } from 'lucide-react';
+import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
+import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { SettingsIcon } from '@/components/ui/animated-icons/settings';
 import { SlidersHorizontalIcon } from '@/components/ui/animated-icons/sliders-horizontal';
 import { AnimateIcon } from '@/components/ui/animated-icons/animate-icon';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/header/page-header';
-import { CategoryLayout } from './category-layout';
-import { SearchBar } from '../layout/header/search-bar';
-import { PreferencesDialog } from '../layout/header/preferences-dialog';
+import { SearchBar } from '@/components/layout/header/search-bar';
+import { PreferencesDialog } from '@/components/layout/header/preferences-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
 import { AppearanceProvider } from '@/components/theme/appearance-provider';
 import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ServiceFormModal } from '@/components/admin/services/service-form-modal';
-import { DeleteConfirmDialog } from '@/components/admin/delete-confirm-dialog';
 import { deleteService } from '@/lib/actions';
+import { getDashboardServiceElementId } from '@/lib/dashboard-dom';
+import { getDashboardSearchResult } from '@/lib/dashboard-search';
 import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
+import { CategoryLayout } from './category-layout';
 
 interface DashboardClientProps {
   appTitle?: string;
@@ -32,10 +35,27 @@ interface DashboardClientProps {
   initialSettings: Partial<Preferences>;
 }
 
+function getActiveServiceId(
+  searchResult: ReturnType<typeof getDashboardSearchResult>,
+  selectedServiceId: string | null
+): string | null {
+  if (!searchResult.isSearching || searchResult.launchServices.length === 0) {
+    return null;
+  }
+
+  if (selectedServiceId && searchResult.launchServices.some((service) => service.id === selectedServiceId)) {
+    return selectedServiceId;
+  }
+
+  return searchResult.launchServices[0]?.id ?? null;
+}
+
 export function DashboardClient({ appTitle, appLogo, categories, services, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const selectedServiceIdRef = useRef<string | null>(null);
   const { settings, updateSetting } = usePreferences({ initialSettings });
   const [showFooter, setShowFooter] = useState(false);
 
@@ -76,30 +96,102 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
     },
   ]);
 
-  const filteredData = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return { categories, services };
+  const searchResult = useMemo(() => getDashboardSearchResult({
+    categories,
+    services,
+    query: searchQuery,
+  }), [categories, services, searchQuery]);
+
+  const activeServiceId = useMemo(() => {
+    return getActiveServiceId(searchResult, selectedServiceId);
+  }, [searchResult, selectedServiceId]);
+
+  const activeService = useMemo(() => {
+    if (!activeServiceId) return null;
+    return searchResult.launchServices.find((service) => service.id === activeServiceId) ?? null;
+  }, [activeServiceId, searchResult]);
+
+  const searchAssistiveText = searchResult.isSearching
+    ? activeService
+      ? `${activeService.name} selected. Press Enter to open.`
+      : 'No services found.'
+    : undefined;
+
+  const updateSelectedServiceId = useCallback((serviceId: string | null) => {
+    selectedServiceIdRef.current = serviceId;
+    setSelectedServiceId(serviceId);
+  }, []);
+
+  const handleSearchChange = useCallback((nextQuery: string) => {
+    setSearchQuery(nextQuery);
+    updateSelectedServiceId(null);
+  }, [updateSelectedServiceId]);
+
+  const handleSearchKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    const currentQuery = event.currentTarget.value;
+
+    if (event.key === 'Escape') {
+      if (currentQuery.length > 0) {
+        event.preventDefault();
+        setSearchQuery('');
+        updateSelectedServiceId(null);
+      }
+      return;
     }
 
-    const query = searchQuery.toLowerCase();
-    const filteredServices = services.filter(
-      (service) =>
-        service.name.toLowerCase().includes(query) ||
-        service.description.toLowerCase().includes(query)
+    const currentSearchResult = getDashboardSearchResult({
+      categories,
+      services,
+      query: currentQuery,
+    });
+    const currentActiveServiceId = getActiveServiceId(
+      currentSearchResult,
+      selectedServiceIdRef.current
     );
+    const currentActiveService = currentActiveServiceId
+      ? currentSearchResult.launchServices.find((service) => service.id === currentActiveServiceId) ?? null
+      : null;
 
-    const categoryIdsWithServices = new Set(filteredServices.map((s) => s.categoryId));
-    const filteredCategories = categories.filter(
-      (cat) =>
-        categoryIdsWithServices.has(cat.id) ||
-        cat.name.toLowerCase().includes(query)
-    );
+    if (!currentSearchResult.isSearching || currentSearchResult.launchServices.length === 0) {
+      return;
+    }
 
-    return {
-      categories: filteredCategories,
-      services: filteredServices,
-    };
-  }, [searchQuery, categories, services]);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+
+      const currentIndex = currentActiveServiceId
+        ? currentSearchResult.launchServices.findIndex((service) => service.id === currentActiveServiceId)
+        : -1;
+      let nextIndex = currentIndex + direction;
+
+      if (currentIndex === -1) {
+        nextIndex = direction === 1 ? 0 : currentSearchResult.launchServices.length - 1;
+      } else if (nextIndex < 0) {
+        nextIndex = currentSearchResult.launchServices.length - 1;
+      } else if (nextIndex >= currentSearchResult.launchServices.length) {
+        nextIndex = 0;
+      }
+
+      const nextServiceId = currentSearchResult.launchServices[nextIndex]?.id ?? null;
+      updateSelectedServiceId(nextServiceId);
+
+      if (nextServiceId) {
+        requestAnimationFrame(() => {
+          document
+            .getElementById(getDashboardServiceElementId(nextServiceId))
+            ?.scrollIntoView({ block: 'nearest' });
+        });
+      }
+      return;
+    }
+
+    if (event.key === 'Enter' && currentActiveService) {
+      event.preventDefault();
+      window.open(currentActiveService.url, '_blank', 'noopener,noreferrer');
+    }
+  }, [categories, services, updateSelectedServiceId]);
 
   const handleEditService = useCallback((service: Service) => {
     setEditingService(service);
@@ -142,7 +234,14 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
   return (
     <AppearanceProvider appearance={settings.appearance} onAppearanceChange={(appearance) => updateSetting('appearance', appearance)}>
       <PageHeader title={titleText} appLogo={appLogo}>
-        <SearchBar ref={searchInputRef} value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar
+          ref={searchInputRef}
+          value={searchQuery}
+          onChange={handleSearchChange}
+          onKeyDown={handleSearchKeyDown}
+          assistiveText={searchAssistiveText}
+          ariaLabel="Search services"
+        />
         <Tooltip>
           <TooltipTrigger onClick={() => setSettingsOpen(true)}>
             <AnimateIcon animateOnHover>
@@ -189,7 +288,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
               </Button>
             </AnimateIcon>
           </Empty>
-        ) : filteredData.categories.length === 0 ? (
+        ) : searchResult.groups.length === 0 ? (
           <p className="text-center py-12 text-muted-foreground">
             No services found matching your search.
           </p>
@@ -201,23 +300,20 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
                 : 'flex flex-col gap-12'
             }
           >
-            {filteredData.categories.map((category) => {
-              const categoryServices = filteredData.services.filter(
-                (s) => s.categoryId === category.id
-              );
-              return (
-                <CategoryLayout
-                  key={category.id}
-                  category={category}
-                  services={categoryServices}
-                  layout={settings.layout}
-                  expandOnHover={settings.expandOnHover}
-                  onEditService={handleEditService}
-                  onDeleteService={handleDeleteService}
-                  cacheKey={cacheKey}
-                />
-              );
-            })}
+            {searchResult.groups.map(({ category, services: categoryServices }) => (
+              <CategoryLayout
+                key={category.id}
+                category={category}
+                services={categoryServices}
+                layout={settings.layout}
+                expandOnHover={settings.expandOnHover}
+                onEditService={handleEditService}
+                onDeleteService={handleDeleteService}
+                cacheKey={cacheKey}
+                searchTokens={searchResult.tokens}
+                selectedServiceId={activeServiceId}
+              />
+            ))}
           </div>
         )}
       </main>
