@@ -143,9 +143,10 @@ async function deleteImageIconIfUnreferenced(iconPath: string | undefined, confi
   await deleteIconFile(iconPath);
 }
 
-function getDefaultServiceIconPath(iconPath: string, serviceId: string): string {
-  const ext = path.extname(path.basename(iconPath)).toLowerCase();
-  return `icons/${serviceId}${ext}`;
+function isServiceOwnedIconPath(iconPath: string, serviceId: string): boolean {
+  const iconBaseName = getIconPathBasename(iconPath);
+
+  return iconBaseName === serviceId || iconBaseName.startsWith(`${serviceId}-`);
 }
 
 async function getCreatedServiceIcon(
@@ -163,7 +164,11 @@ async function getCreatedServiceIcon(
   }
 
   try {
-    if (!reservedIconPaths.has(icon.value) && icon.value === getDefaultServiceIconPath(icon.value, serviceId)) {
+    if (
+      !reservedIconPaths.has(icon.value) &&
+      !reservedIconBasenames.has(getIconPathBasename(icon.value)) &&
+      isServiceOwnedIconPath(icon.value, serviceId)
+    ) {
       return icon;
     }
 

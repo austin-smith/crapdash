@@ -271,6 +271,42 @@ describe('service icon actions', () => {
     await expect(readFile(path.join(getIconsDir(), path.basename(result.data)), 'utf-8')).resolves.toBe('service icon');
   });
 
+  it('uses an unreferenced uploaded service icon without copying it again on create', async () => {
+    await writeConfig({
+      appLogo: { type: ICON_TYPES.IMAGE, value: 'icons/app-logo.png' },
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [],
+    });
+    await writeIcon('app-logo.png', 'app logo');
+
+    const formData = new FormData();
+    formData.append('serviceId', 'app-logo');
+    formData.append('file', new File(['service icon'], 'service.png', { type: 'image/png' }));
+    const uploadResult = await uploadServiceIcon(formData);
+
+    expect(uploadResult.success).toBe(true);
+    if (!uploadResult.success) return;
+    expect(uploadResult.data).toMatch(/^icons\/app-logo-[a-f0-9-]+\.png$/);
+
+    const createResult = await createService({
+      id: 'app-logo',
+      name: 'App Logo',
+      description: 'Service',
+      url: 'https://app-logo.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: uploadResult.data },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) return;
+    expect(createResult.data.icon).toEqual({ type: ICON_TYPES.IMAGE, value: uploadResult.data });
+    const iconFiles = await readdir(getIconsDir());
+    expect(iconFiles.filter((file) => /^app-logo-[a-f0-9-]+\.png$/.test(file))).toHaveLength(1);
+    await expect(readFile(path.join(getIconsDir(), path.basename(uploadResult.data)), 'utf-8')).resolves.toBe('service icon');
+  });
+
   it('preserves referenced same-basename icons when uploading an app logo', async () => {
     await writeConfig({
       categories: [{ id: 'infra', name: 'Infrastructure' }],
