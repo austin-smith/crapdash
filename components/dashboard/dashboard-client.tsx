@@ -22,8 +22,9 @@ import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { deleteService } from '@/lib/actions';
-import { getDashboardServiceElementId } from '@/lib/dashboard-dom';
+import { DASHBOARD_SERVICE_ID_ATTRIBUTE, getDashboardServiceElementId } from '@/lib/dashboard-dom';
 import { getDashboardSearchResult } from '@/lib/dashboard-search';
+import { getNextSpatialItemId, type SpatialDirection, type SpatialItem } from '@/lib/spatial-navigation';
 import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
 import { CategoryLayout } from './category-layout';
 
@@ -48,6 +49,40 @@ function getActiveServiceId(
   }
 
   return searchResult.launchServices[0]?.id ?? null;
+}
+
+function getSpatialDirection(key: string): SpatialDirection | null {
+  if (key === 'ArrowUp') return 'up';
+  if (key === 'ArrowDown') return 'down';
+  if (key === 'ArrowLeft') return 'left';
+  if (key === 'ArrowRight') return 'right';
+
+  return null;
+}
+
+function getVisibleServiceItems(): SpatialItem[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(`[${DASHBOARD_SERVICE_ID_ATTRIBUTE}]`)
+  ).flatMap((element) => {
+    const id = element.getAttribute(DASHBOARD_SERVICE_ID_ATTRIBUTE);
+    const rect = element.getBoundingClientRect();
+
+    if (!id || rect.width === 0 || rect.height === 0) {
+      return [];
+    }
+
+    return [{
+      id,
+      rect: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
+    }];
+  });
 }
 
 export function DashboardClient({ appTitle, appLogo, categories, services, initialSettings }: DashboardClientProps) {
@@ -127,6 +162,31 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
     updateSelectedServiceId(null);
   }, [updateSelectedServiceId]);
 
+  const focusService = useCallback((serviceId: string) => {
+    requestAnimationFrame(() => {
+      const element = document.getElementById(getDashboardServiceElementId(serviceId));
+      if (!element) return;
+
+      element.focus({ preventScroll: true });
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  }, []);
+
+  const moveServiceSelection = useCallback((direction: SpatialDirection, currentServiceId: string | null) => {
+    const nextServiceId = getNextSpatialItemId({
+      items: getVisibleServiceItems(),
+      currentId: currentServiceId,
+      direction,
+    });
+
+    if (!nextServiceId) {
+      return;
+    }
+
+    updateSelectedServiceId(nextServiceId);
+    focusService(nextServiceId);
+  }, [focusService, updateSelectedServiceId]);
+
   const handleSearchKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
     const currentQuery = event.currentTarget.value;
@@ -157,33 +217,10 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       return;
     }
 
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    const direction = getSpatialDirection(event.key);
+    if (direction === 'down' || direction === 'up') {
       event.preventDefault();
-      const direction = event.key === 'ArrowDown' ? 1 : -1;
-
-      const currentIndex = currentActiveServiceId
-        ? currentSearchResult.launchServices.findIndex((service) => service.id === currentActiveServiceId)
-        : -1;
-      let nextIndex = currentIndex + direction;
-
-      if (currentIndex === -1) {
-        nextIndex = direction === 1 ? 0 : currentSearchResult.launchServices.length - 1;
-      } else if (nextIndex < 0) {
-        nextIndex = currentSearchResult.launchServices.length - 1;
-      } else if (nextIndex >= currentSearchResult.launchServices.length) {
-        nextIndex = 0;
-      }
-
-      const nextServiceId = currentSearchResult.launchServices[nextIndex]?.id ?? null;
-      updateSelectedServiceId(nextServiceId);
-
-      if (nextServiceId) {
-        requestAnimationFrame(() => {
-          document
-            .getElementById(getDashboardServiceElementId(nextServiceId))
-            ?.scrollIntoView({ block: 'nearest' });
-        });
-      }
+      moveServiceSelection(direction, currentActiveServiceId);
       return;
     }
 
@@ -191,7 +228,47 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       event.preventDefault();
       window.open(currentActiveService.url, '_blank', 'noopener,noreferrer');
     }
-  }, [categories, services, updateSelectedServiceId]);
+  }, [categories, moveServiceSelection, services, updateSelectedServiceId]);
+
+  const handleServiceNavigationKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.nativeEvent.isComposing) return;
+
+    if (event.key === 'Escape' && searchQuery.length > 0) {
+      event.preventDefault();
+      setSearchQuery('');
+      updateSelectedServiceId(null);
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+      return;
+    }
+
+    const direction = getSpatialDirection(event.key);
+    if (!direction || !searchResult.isSearching || searchResult.launchServices.length === 0) {
+      return;
+    }
+
+    const serviceElement = (event.target as HTMLElement).closest<HTMLElement>(
+      `[${DASHBOARD_SERVICE_ID_ATTRIBUTE}]`
+    );
+    const currentServiceId = serviceElement?.getAttribute(DASHBOARD_SERVICE_ID_ATTRIBUTE)
+      ?? selectedServiceIdRef.current
+      ?? activeServiceId;
+
+    event.preventDefault();
+    moveServiceSelection(direction, currentServiceId);
+  }, [
+    activeServiceId,
+    moveServiceSelection,
+    searchQuery.length,
+    searchResult.isSearching,
+    searchResult.launchServices.length,
+    updateSelectedServiceId,
+  ]);
+
+  const handleFocusService = useCallback((service: Service) => {
+    if (searchResult.isSearching) {
+      updateSelectedServiceId(service.id);
+    }
+  }, [searchResult.isSearching, updateSelectedServiceId]);
 
   const handleEditService = useCallback((service: Service) => {
     setEditingService(service);
@@ -294,6 +371,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
           </p>
         ) : (
           <div
+            onKeyDown={handleServiceNavigationKeyDown}
             className={
               settings.layout === LAYOUTS.COLUMNS
                 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
@@ -309,6 +387,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
                 expandOnHover={settings.expandOnHover}
                 onEditService={handleEditService}
                 onDeleteService={handleDeleteService}
+                onFocusService={handleFocusService}
                 cacheKey={cacheKey}
                 searchTokens={searchResult.tokens}
                 selectedServiceId={activeServiceId}

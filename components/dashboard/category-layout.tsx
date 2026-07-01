@@ -13,6 +13,7 @@ interface CategoryLayoutProps {
   expandOnHover: boolean;
   onEditService: (service: Service) => void;
   onDeleteService: (service: Service) => void;
+  onFocusService?: (service: Service) => void;
   cacheKey?: number;
   searchTokens?: string[];
   selectedServiceId?: string | null;
@@ -25,6 +26,7 @@ export function CategoryLayout({
   expandOnHover,
   onEditService,
   onDeleteService,
+  onFocusService,
   cacheKey,
   searchTokens = [],
   selectedServiceId,
@@ -68,6 +70,7 @@ export function CategoryLayout({
               searchTokens={searchTokens}
               isKeyboardSelected={service.id === selectedServiceId}
               domId={getDashboardServiceElementId(service.id)}
+              onFocus={onFocusService}
             />
           </ServiceCardContext>
         ))}

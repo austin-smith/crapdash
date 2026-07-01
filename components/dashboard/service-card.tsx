@@ -4,6 +4,7 @@ import { useRef, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ServiceIcon } from '@/components/common/icons/service-icon';
 import { HighlightedText } from '@/components/common/highlighted-text';
+import { DASHBOARD_SERVICE_ID_ATTRIBUTE } from '@/lib/dashboard-dom';
 import { cn } from '@/lib/utils';
 import type { Service } from '@/lib/types';
 
@@ -14,6 +15,7 @@ interface ServiceCardProps {
   searchTokens?: string[];
   isKeyboardSelected?: boolean;
   domId?: string;
+  onFocus?: (service: Service) => void;
 }
 
 export function ServiceCard({
@@ -23,6 +25,7 @@ export function ServiceCard({
   searchTokens = [],
   isKeyboardSelected = false,
   domId,
+  onFocus,
 }: ServiceCardProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined);
@@ -45,6 +48,7 @@ export function ServiceCard({
       href={service.url}
       target="_blank"
       rel="noopener noreferrer"
+      {...{ [DASHBOARD_SERVICE_ID_ATTRIBUTE]: service.id }}
       data-launch-selected={isKeyboardSelected ? 'true' : undefined}
       className={cn(
         'group block transition-transform hover:scale-[1.03] group-data-[state=open]/context:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg',
@@ -52,6 +56,7 @@ export function ServiceCard({
       )}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      onFocus={() => onFocus?.(service)}
     >
       <Card
         size="sm"
