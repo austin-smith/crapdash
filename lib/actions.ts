@@ -74,6 +74,15 @@ async function getPromotedServiceIcon(icon: IconConfig | undefined, serviceId: s
   };
 }
 
+function isMissingFileError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  );
+}
+
 async function getCreatedServiceIcon(icon: IconConfig | undefined, serviceId: string): Promise<IconConfig | undefined> {
   if (icon?.type !== ICON_TYPES.IMAGE) {
     return icon;
@@ -90,10 +99,18 @@ async function getCreatedServiceIcon(icon: IconConfig | undefined, serviceId: st
     return icon;
   }
 
-  return {
-    type: ICON_TYPES.IMAGE,
-    value: await copyIconToService(icon.value, serviceId),
-  };
+  try {
+    return {
+      type: ICON_TYPES.IMAGE,
+      value: await copyIconToService(icon.value, serviceId),
+    };
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 function validateImageFile(file: File, fieldName: string): { success: false; errors: { field: string; message: string }[] } | null {

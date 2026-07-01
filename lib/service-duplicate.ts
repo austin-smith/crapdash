@@ -1,5 +1,14 @@
 import { ICON_TYPES, type Service, type ServiceFormData } from './types';
 import { slugify } from './utils';
+import { SERVICE_NAME_MAX_LENGTH } from './validations';
+
+function getDuplicateCandidateName(baseName: string, suffix: string): string {
+  const copySuffix = ` (${suffix})`;
+  const maxBaseLength = SERVICE_NAME_MAX_LENGTH - copySuffix.length;
+  const truncatedBaseName = baseName.slice(0, maxBaseLength).trimEnd();
+
+  return `${truncatedBaseName || 'Service'}${copySuffix}`;
+}
 
 function getUniqueDuplicateName(sourceName: string, existingServices: Service[]): string {
   const trimmedName = sourceName.trim();
@@ -9,7 +18,7 @@ function getUniqueDuplicateName(sourceName: string, existingServices: Service[])
 
   for (let copyNumber = 1; copyNumber < Number.MAX_SAFE_INTEGER; copyNumber += 1) {
     const suffix = copyNumber === 1 ? 'Copy' : `Copy ${copyNumber}`;
-    const candidateName = `${baseName} (${suffix})`;
+    const candidateName = getDuplicateCandidateName(baseName, suffix);
     const candidateId = slugify(candidateName);
 
     if (candidateId && !existingIds.has(candidateId) && !existingNames.has(candidateName.toLowerCase())) {

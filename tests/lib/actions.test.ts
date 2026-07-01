@@ -107,6 +107,40 @@ describe('service icon actions', () => {
     expect(savedConfig.services[1]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' });
   });
 
+  it('creates the service without an icon when a copied image source file is missing', async () => {
+    await writeConfig({
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+        active: true,
+      }],
+    });
+
+    const result = await createService({
+      id: 'grafana-copy',
+      name: 'Grafana (Copy)',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.icon).toBeUndefined();
+    expect(await fileExists('grafana-copy.png')).toBe(false);
+
+    const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
+    expect(savedConfig.services[1]?.icon).toBeUndefined();
+  });
+
   it('restores previous icon files when update config persistence fails after promotion', async () => {
     await writeConfig({
       categories: [{ id: 'infra', name: 'Infrastructure' }],

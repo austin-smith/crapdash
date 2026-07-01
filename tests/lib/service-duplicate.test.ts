@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
 import { ICON_TYPES, type Service } from '@/lib/types';
+import { SERVICE_NAME_MAX_LENGTH } from '@/lib/validations';
 
 const baseService: Service = {
   id: 'grafana',
@@ -34,6 +35,33 @@ describe('service duplicate helpers', () => {
     ]);
 
     expect(draft.name).toBe('Grafana (Copy 3)');
+  });
+
+  it('truncates long service names before appending the copy suffix', () => {
+    const longName = 'A'.repeat(SERVICE_NAME_MAX_LENGTH);
+    const draft = createServiceDuplicateDraft({
+      ...baseService,
+      id: 'long-service',
+      name: longName,
+    }, [{ ...baseService, id: 'long-service', name: longName }]);
+
+    expect(draft.name).toBe(`${'A'.repeat(93)} (Copy)`);
+    expect(draft.name).toHaveLength(SERVICE_NAME_MAX_LENGTH);
+  });
+
+  it('reserves enough room when an incremented copy suffix is needed', () => {
+    const longName = 'A'.repeat(SERVICE_NAME_MAX_LENGTH);
+    const draft = createServiceDuplicateDraft({
+      ...baseService,
+      id: 'long-service',
+      name: longName,
+    }, [
+      { ...baseService, id: 'long-service', name: longName },
+      { ...baseService, id: `${'a'.repeat(93)}-copy`, name: `${'A'.repeat(93)} (Copy)` },
+    ]);
+
+    expect(draft.name).toBe(`${'A'.repeat(91)} (Copy 2)`);
+    expect(draft.name).toHaveLength(SERVICE_NAME_MAX_LENGTH);
   });
 
   it('preserves image icon references for the create action to copy under the new service id', () => {
