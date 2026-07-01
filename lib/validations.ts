@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { ICON_TYPES } from './types';
+import { ICON_TYPES, SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './types';
 import { resolveLucideIconName } from './lucide-icons';
-
-export const SERVICE_NAME_MAX_LENGTH = 100;
-export const SERVICE_DESCRIPTION_MAX_LENGTH = 500;
 
 export const slugSchema = z.string().regex(
   /^[a-z0-9-]+$/i,

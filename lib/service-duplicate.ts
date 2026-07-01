@@ -1,6 +1,5 @@
-import { ICON_TYPES, type Service, type ServiceFormData } from './types';
+import { ICON_TYPES, SERVICE_NAME_MAX_LENGTH, type Service, type ServiceFormData } from './types';
 import { slugify } from './utils';
-import { SERVICE_NAME_MAX_LENGTH } from './validations';
 
 function getDuplicateCandidateName(baseName: string, suffix: string): string {
   const copySuffix = ` (${suffix})`;

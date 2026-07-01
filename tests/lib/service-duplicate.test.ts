@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
-import { ICON_TYPES, type Service } from '@/lib/types';
-import { SERVICE_NAME_MAX_LENGTH } from '@/lib/validations';
+import { ICON_TYPES, SERVICE_NAME_MAX_LENGTH, type Service } from '@/lib/types';
 
 const baseService: Service = {
   id: 'grafana',
