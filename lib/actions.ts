@@ -21,6 +21,7 @@ import {
   backupServiceIconFiles,
   copyIconToService,
   deleteIconFile,
+  getAvailableIconBaseName,
   getAppLogoFilename,
   isProvisionalIconPath,
   isValidImageExtension,
@@ -61,12 +62,20 @@ type SaveConfigJsonResult = ImportConfigResult & {
   revision: string;
 };
 
-async function getPromotedServiceIcon(icon: IconConfig | undefined, serviceId: string): Promise<IconConfig | undefined> {
+async function getPromotedServiceIcon(
+  icon: IconConfig | undefined,
+  serviceId: string,
+  protectedIconPaths?: Set<string>,
+  reservedIconBasenames?: Set<string>
+): Promise<IconConfig | undefined> {
   if (icon?.type !== ICON_TYPES.IMAGE || !isProvisionalIconPath(icon.value)) {
     return icon;
   }
 
-  const iconPath = await promoteProvisionalIcon(icon.value, serviceId);
+  const iconPath = await promoteProvisionalIcon(icon.value, serviceId, {
+    protectedIconPaths,
+    reservedIconBasenames,
+  });
   return {
     type: ICON_TYPES.IMAGE,
     value: iconPath,
@@ -86,15 +95,22 @@ function getImageIconPath(icon: IconConfig | undefined): string | undefined {
   return icon?.type === ICON_TYPES.IMAGE ? icon.value : undefined;
 }
 
-function getReferencedImageIconPaths(config: DashboardConfig): Set<string> {
+function getReferencedImageIconPaths(
+  config: DashboardConfig,
+  options: { excludeServiceId?: string; excludeAppLogo?: boolean } = {}
+): Set<string> {
   const refs = new Set<string>();
 
-  const appLogoPath = getImageIconPath(config.appLogo);
-  if (appLogoPath) {
-    refs.add(appLogoPath);
+  if (!options.excludeAppLogo) {
+    const appLogoPath = getImageIconPath(config.appLogo);
+    if (appLogoPath) {
+      refs.add(appLogoPath);
+    }
   }
 
   for (const service of config.services) {
+    if (service.id === options.excludeServiceId) continue;
+
     const iconPath = getImageIconPath(service.icon);
     if (iconPath) {
       refs.add(iconPath);
@@ -102,6 +118,23 @@ function getReferencedImageIconPaths(config: DashboardConfig): Set<string> {
   }
 
   return refs;
+}
+
+function getIconPathBasename(iconPath: string): string {
+  return path.parse(path.basename(iconPath)).name;
+}
+
+function getImageIconPathBasenames(iconPaths: Set<string>): Set<string> {
+  return new Set(
+    [...iconPaths].map((iconPath) => getIconPathBasename(iconPath))
+  );
+}
+
+function getReferencedImageIconBasenames(
+  config: DashboardConfig,
+  options: { excludeServiceId?: string; excludeAppLogo?: boolean } = {}
+): Set<string> {
+  return getImageIconPathBasenames(getReferencedImageIconPaths(config, options));
 }
 
 async function deleteImageIconIfUnreferenced(iconPath: string | undefined, config: DashboardConfig): Promise<void> {
@@ -118,14 +151,15 @@ function getDefaultServiceIconPath(iconPath: string, serviceId: string): string 
 async function getCreatedServiceIcon(
   icon: IconConfig | undefined,
   serviceId: string,
-  reservedIconPaths: Set<string>
+  reservedIconPaths: Set<string>,
+  reservedIconBasenames: Set<string>
 ): Promise<IconConfig | undefined> {
   if (icon?.type !== ICON_TYPES.IMAGE) {
     return icon;
   }
 
   if (isProvisionalIconPath(icon.value)) {
-    return getPromotedServiceIcon(icon, serviceId);
+    return getPromotedServiceIcon(icon, serviceId, reservedIconPaths, reservedIconBasenames);
   }
 
   try {
@@ -135,7 +169,7 @@ async function getCreatedServiceIcon(
 
     return {
       type: ICON_TYPES.IMAGE,
-      value: await copyIconToService(icon.value, serviceId, { reservedIconPaths }),
+      value: await copyIconToService(icon.value, serviceId, { reservedIconBasenames }),
     };
   } catch (error) {
     if (isMissingFileError(error)) {
@@ -159,11 +193,16 @@ function validateImageFile(file: File, fieldName: string): { success: false; err
   return null;
 }
 
-async function writeIconFile(file: File, filename: string, baseNameForCleanup: string): Promise<string> {
+async function writeIconFile(
+  file: File,
+  filename: string,
+  baseNameForCleanup: string,
+  protectedIconPaths?: Set<string>
+): Promise<string> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  return writeIconBuffer(buffer, filename, baseNameForCleanup);
+  return writeIconBuffer(buffer, filename, { baseNameForCleanup, protectedIconPaths });
 }
 
 function mapValidationIssues(error: ZodError): Array<{ field: string; message: string }> {
@@ -257,9 +296,15 @@ export async function uploadServiceIcon(formData: FormData): Promise<ActionResul
     const validationError = validateImageFile(file, 'icon');
     if (validationError) return validationError;
 
+    const config = await readConfig();
+    const protectedIconPaths = getReferencedImageIconPaths(config, { excludeServiceId: idValidation.data });
     const ext = path.extname(file.name).toLowerCase();
-    const filename = `${serviceId}${ext}`;
-    const iconPath = await writeIconFile(file, filename, serviceId);
+    const targetBaseName = getAvailableIconBaseName(
+      idValidation.data,
+      getImageIconPathBasenames(protectedIconPaths)
+    );
+    const filename = `${targetBaseName}${ext}`;
+    const iconPath = await writeIconFile(file, filename, targetBaseName, protectedIconPaths);
 
     return { success: true, data: iconPath };
   } catch (error) {
@@ -367,10 +412,15 @@ export async function uploadAppLogo(formData: FormData): Promise<ActionResult<st
     const validationError = validateImageFile(file, 'appLogo');
     if (validationError) return validationError;
 
+    const config = await readConfig();
+    const protectedIconPaths = getReferencedImageIconPaths(config, { excludeAppLogo: true });
     const ext = path.extname(file.name).toLowerCase();
     const filename = getAppLogoFilename(ext);
-    const baseName = path.parse(filename).name;
-    const iconPath = await writeIconFile(file, filename, baseName);
+    const targetBaseName = getAvailableIconBaseName(
+      path.parse(filename).name,
+      getImageIconPathBasenames(protectedIconPaths)
+    );
+    const iconPath = await writeIconFile(file, `${targetBaseName}${ext}`, targetBaseName, protectedIconPaths);
 
     return { success: true, data: iconPath };
   } catch (error) {
@@ -695,9 +745,11 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
 
     let downloadedIconPath: string | null = null;
     let promotedIconPath: string | null = null;
+    const reservedIconPaths = getReferencedImageIconPaths(config);
+    const reservedIconBasenames = getReferencedImageIconBasenames(config);
     const newService: Service = {
       ...validated,
-      icon: await getCreatedServiceIcon(validated.icon, validated.id, getReferencedImageIconPaths(config)),
+      icon: await getCreatedServiceIcon(validated.icon, validated.id, reservedIconPaths, reservedIconBasenames),
     };
     if (
       newService.icon?.type === ICON_TYPES.IMAGE &&
@@ -708,7 +760,10 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
     }
 
     if (!newService.icon && shouldFetchFavicon) {
-      downloadedIconPath = await fetchServiceFavicon(newService.url, newService.id);
+      downloadedIconPath = await fetchServiceFavicon(newService.url, newService.id, {
+        protectedIconPaths: reservedIconPaths,
+        reservedIconBasenames,
+      });
       if (downloadedIconPath) {
         newService.icon = { type: ICON_TYPES.IMAGE, value: downloadedIconPath };
       }
@@ -784,7 +839,20 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       validated.icon?.type === ICON_TYPES.IMAGE && isProvisionalIconPath(validated.icon.value)
         ? await backupServiceIconFiles(idValidation.data)
         : null;
-    const nextIcon = await getPromotedServiceIcon(validated.icon, idValidation.data);
+    const protectedIconPaths = getReferencedImageIconPaths(config, { excludeServiceId: idValidation.data });
+    const nextIcon = await getPromotedServiceIcon(
+      validated.icon,
+      idValidation.data,
+      protectedIconPaths,
+      getImageIconPathBasenames(protectedIconPaths)
+    );
+    const promotedIconPath =
+      existingIconBackup &&
+      nextIcon?.type === ICON_TYPES.IMAGE &&
+      validated.icon?.type === ICON_TYPES.IMAGE &&
+      nextIcon.value !== validated.icon.value
+        ? nextIcon.value
+        : undefined;
     const updatedService: Service = {
       ...config.services[index],
       ...validated,
@@ -796,6 +864,9 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       await writeConfig(config);
     } catch (error) {
       if (existingIconBackup) {
+        if (promotedIconPath) {
+          await deleteIconFile(promotedIconPath);
+        }
         await restoreServiceIconFiles(idValidation.data, existingIconBackup);
       }
       throw error;

@@ -7,6 +7,7 @@ import {
   isProvisionalIconPath,
   promoteProvisionalIcon,
   restoreServiceIconFiles,
+  writeIconBuffer,
 } from '@/lib/file-utils';
 import { getIconsDir } from '@/lib/paths';
 import { createTestDataDir, removeTestDataDir } from './test-data-dir';
@@ -73,17 +74,33 @@ describe('file-utils icon persistence', () => {
     await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
   });
 
-  it('chooses a unique target when the default copy destination is reserved', async () => {
+  it('chooses a unique target when the default copy basename is reserved', async () => {
     await writeIcon('grafana.png', 'source icon');
-    await writeIcon('grafana-copy.png', 'reserved icon');
+    await writeIcon('grafana-copy.svg', 'reserved icon');
 
     const copiedPath = await copyIconToService('icons/grafana.png', 'grafana-copy', {
-      reservedIconPaths: new Set(['icons/grafana-copy.png']),
+      reservedIconBasenames: new Set(['grafana-copy']),
     });
     const copiedFilename = path.basename(copiedPath);
 
     expect(copiedPath).toMatch(/^icons\/grafana-copy-[a-f0-9-]+\.png$/);
-    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('reserved icon');
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.svg'), 'utf-8')).resolves.toBe('reserved icon');
     await expect(readFile(path.join(getIconsDir(), copiedFilename), 'utf-8')).resolves.toBe('source icon');
+  });
+
+  it('preserves protected icon paths during same-basename cleanup', async () => {
+    await writeIcon('grafana.svg', 'protected icon');
+    await writeIcon('grafana.ico', 'stale icon');
+
+    await writeIconBuffer(Buffer.from('new icon'), 'grafana.png', {
+      baseNameForCleanup: 'grafana',
+      protectedIconPaths: new Set(['icons/grafana.svg']),
+    });
+
+    const files = await readdir(getIconsDir());
+    expect(files).toEqual(expect.arrayContaining(['grafana.svg', 'grafana.png']));
+    expect(files).not.toContain('grafana.ico');
+    await expect(readFile(path.join(getIconsDir(), 'grafana.svg'), 'utf-8')).resolves.toBe('protected icon');
+    await expect(readFile(path.join(getIconsDir(), 'grafana.png'), 'utf-8')).resolves.toBe('new icon');
   });
 });

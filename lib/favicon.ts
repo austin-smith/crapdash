@@ -6,7 +6,7 @@ import {
   isAllowedImageExtension,
   isAllowedImageMime,
 } from './image-constants';
-import { getProvisionalIconFilename, writeIconBuffer } from './file-utils';
+import { getAvailableIconBaseName, getProvisionalIconFilename, writeIconBuffer } from './file-utils';
 import {
   SERVICE_FETCH_USER_AGENT,
   fetchPageHtml,
@@ -232,12 +232,27 @@ async function findServiceFavicon(serviceUrl: string): Promise<{ buffer: Buffer;
   return null;
 }
 
-export async function fetchServiceFavicon(serviceUrl: string, serviceId: string): Promise<string | null> {
+export async function fetchServiceFavicon(
+  serviceUrl: string,
+  serviceId: string,
+  options: {
+    protectedIconPaths?: Set<string>;
+    reservedIconBasenames?: Set<string>;
+  } = {}
+): Promise<string | null> {
   try {
     const icon = await findServiceFavicon(serviceUrl);
     if (!icon) return null;
 
-    return writeIconBuffer(icon.buffer, `${serviceId}${icon.ext}`, serviceId);
+    const targetBaseName = getAvailableIconBaseName(
+      serviceId,
+      options.reservedIconBasenames ?? new Set<string>()
+    );
+
+    return writeIconBuffer(icon.buffer, `${targetBaseName}${icon.ext}`, {
+      baseNameForCleanup: targetBaseName,
+      protectedIconPaths: options.protectedIconPaths,
+    });
   } catch (error) {
     if (error instanceof Error && error.name !== 'TimeoutError' && error.name !== 'AbortError') {
       console.error('Favicon fetch error:', error);

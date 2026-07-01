@@ -90,7 +90,7 @@ export function ServiceForm({ service, initialValues, categories, onSuccess, onC
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [iconVersion, setIconVersion] = useState(0);
   const [iconControl, setIconControl] = useState<'auto' | 'manual'>(
-    service || initialValues?.icon ? 'manual' : 'auto'
+    hasSeededValues ? 'manual' : 'auto'
   );
   const urlRef = useRef(url);
   const nameRef = useRef(name);
