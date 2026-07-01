@@ -19,6 +19,7 @@ import {
 } from './validations';
 import {
   backupServiceIconFiles,
+  copyIconToService,
   deleteAppLogo,
   deleteIconFile,
   deleteServiceIcon,
@@ -70,6 +71,28 @@ async function getPromotedServiceIcon(icon: IconConfig | undefined, serviceId: s
   return {
     type: ICON_TYPES.IMAGE,
     value: iconPath,
+  };
+}
+
+async function getCreatedServiceIcon(icon: IconConfig | undefined, serviceId: string): Promise<IconConfig | undefined> {
+  if (icon?.type !== ICON_TYPES.IMAGE) {
+    return icon;
+  }
+
+  const filename = path.basename(icon.value);
+  const iconBaseName = path.parse(filename).name;
+
+  if (isProvisionalIconPath(icon.value)) {
+    return getPromotedServiceIcon(icon, serviceId);
+  }
+
+  if (iconBaseName === serviceId) {
+    return icon;
+  }
+
+  return {
+    type: ICON_TYPES.IMAGE,
+    value: await copyIconToService(icon.value, serviceId),
   };
 }
 
@@ -626,7 +649,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
     let promotedIconPath: string | null = null;
     const newService: Service = {
       ...validated,
-      icon: await getPromotedServiceIcon(validated.icon, validated.id),
+      icon: await getCreatedServiceIcon(validated.icon, validated.id),
     };
     if (
       newService.icon?.type === ICON_TYPES.IMAGE &&

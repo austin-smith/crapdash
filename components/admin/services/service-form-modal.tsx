@@ -7,12 +7,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ServiceForm } from './service-form';
-import type { Category, Service } from '@/lib/types';
+import type { Category, Service, ServiceFormData } from '@/lib/types';
 
 interface ServiceFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   service?: Service;
+  initialValues?: ServiceFormData;
+  mode?: 'create' | 'duplicate' | 'edit';
   categories: Category[];
   onSuccess: () => void;
   cacheKey?: number;
@@ -22,6 +24,8 @@ export function ServiceFormModal({
   open,
   onOpenChange,
   service,
+  initialValues,
+  mode,
   categories,
   onSuccess,
   cacheKey,
@@ -30,15 +34,28 @@ export function ServiceFormModal({
     onSuccess();
     onOpenChange(false);
   };
+  const resolvedMode = mode ?? (service ? 'edit' : 'create');
+  const formKey = service
+    ? `edit:${service.id}`
+    : initialValues
+      ? `draft:${initialValues.name}:${initialValues.url}:${initialValues.categoryId}`
+      : 'create';
+  const title = resolvedMode === 'edit'
+    ? 'Edit Service'
+    : resolvedMode === 'duplicate'
+      ? 'Duplicate Service'
+      : 'Add Service';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>{service ? 'Edit Service' : 'Add Service'}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <ServiceForm
+          key={formKey}
           service={service}
+          initialValues={initialValues}
           categories={categories}
           onSuccess={handleSuccess}
           onCancel={() => onOpenChange(false)}

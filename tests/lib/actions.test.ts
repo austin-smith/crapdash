@@ -71,6 +71,42 @@ describe('service icon actions', () => {
     expect(savedConfig.services[0]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' });
   });
 
+  it('copies an existing image icon when creating a service with a different id', async () => {
+    await writeConfig({
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+        active: true,
+      }],
+    });
+    await writeIcon('grafana.png', 'source icon');
+
+    const result = await createService({
+      id: 'grafana-copy',
+      name: 'Grafana Copy',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' });
+    await expect(readFile(path.join(getIconsDir(), 'grafana.png'), 'utf-8')).resolves.toBe('source icon');
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
+
+    const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
+    expect(savedConfig.services[1]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' });
+  });
+
   it('restores previous icon files when update config persistence fails after promotion', async () => {
     await writeConfig({
       categories: [{ id: 'infra', name: 'Infrastructure' }],

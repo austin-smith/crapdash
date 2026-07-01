@@ -26,10 +26,11 @@ import {
   type ServiceMetadataApplyMode,
 } from '@/lib/service-metadata-apply';
 import { cn, slugify } from '@/lib/utils';
-import { ICON_TYPES, type Category, type IconConfig, type Service } from '@/lib/types';
+import { ICON_TYPES, type Category, type IconConfig, type Service, type ServiceFormData } from '@/lib/types';
 
 interface ServiceFormProps {
   service?: Service;
+  initialValues?: ServiceFormData;
   categories: Category[];
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -73,25 +74,29 @@ function getIconFetchId(serviceId: string, serviceUrl: string): string {
   }
 }
 
-export function ServiceForm({ service, categories, onSuccess, onCancel, cacheKey }: ServiceFormProps) {
-  const [name, setName] = useState(service?.name || '');
-  const [description, setDescription] = useState(service?.description || '');
-  const [url, setUrl] = useState(service?.url || '');
-  const [categoryId, setCategoryId] = useState(service?.categoryId || '');
-  const [icon, setIcon] = useState<IconConfig | undefined>(service?.icon);
+export function ServiceForm({ service, initialValues, categories, onSuccess, onCancel, cacheKey }: ServiceFormProps) {
+  const formValues = service ?? initialValues;
+  const hasSeededValues = !!formValues;
+  const [name, setName] = useState(formValues?.name || '');
+  const [description, setDescription] = useState(formValues?.description || '');
+  const [url, setUrl] = useState(formValues?.url || '');
+  const [categoryId, setCategoryId] = useState(formValues?.categoryId || '');
+  const [icon, setIcon] = useState<IconConfig | undefined>(formValues?.icon);
   const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
-  const [active, setActive] = useState(service?.active ?? true);
+  const [active, setActive] = useState(formValues?.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingIcon, setIsFetchingIcon] = useState(false);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [iconVersion, setIconVersion] = useState(0);
-  const [iconControl, setIconControl] = useState<'auto' | 'manual'>(service ? 'manual' : 'auto');
+  const [iconControl, setIconControl] = useState<'auto' | 'manual'>(
+    service || initialValues?.icon ? 'manual' : 'auto'
+  );
   const urlRef = useRef(url);
   const nameRef = useRef(name);
   const descriptionRef = useRef(description);
-  const hasUserEditedNameRef = useRef(!!service);
-  const hasUserEditedDescriptionRef = useRef(!!service);
+  const hasUserEditedNameRef = useRef(hasSeededValues);
+  const hasUserEditedDescriptionRef = useRef(hasSeededValues);
   const lastAutoFetchKeyRef = useRef<string | null>(null);
   const lastAutoMetadataFetchKeyRef = useRef<string | null>(null);
   const autoFetchRequestRef = useRef(0);

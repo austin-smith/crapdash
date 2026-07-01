@@ -139,9 +139,26 @@ export function isProvisionalIconPath(iconPath: string): boolean {
   );
 }
 
+export function isManagedIconPath(iconPath: string): boolean {
+  const filename = path.basename(iconPath);
+
+  return iconPath === `icons/${filename}` && isValidImageExtension(filename);
+}
+
 export async function promoteProvisionalIcon(iconPath: string, serviceId: string): Promise<string> {
   if (!isProvisionalIconPath(iconPath)) {
     throw new Error('Only provisional icons can be promoted');
+  }
+
+  const filename = path.basename(iconPath);
+  const ext = path.extname(filename).toLowerCase();
+  const buffer = await fs.readFile(getIconFilePath(filename));
+  return writeIconBuffer(buffer, `${serviceId}${ext}`, serviceId);
+}
+
+export async function copyIconToService(iconPath: string, serviceId: string): Promise<string> {
+  if (!isManagedIconPath(iconPath)) {
+    throw new Error('Only managed icon paths can be copied');
   }
 
   const filename = path.basename(iconPath);

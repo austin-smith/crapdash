@@ -3,6 +3,7 @@ import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   backupServiceIconFiles,
+  copyIconToService,
   isProvisionalIconPath,
   promoteProvisionalIcon,
   restoreServiceIconFiles,
@@ -58,5 +59,17 @@ describe('file-utils icon persistence', () => {
     expect(files).toEqual(expect.arrayContaining(['__tmp-favicon-preview.ico', 'grafana.svg']));
     expect(files).not.toContain('grafana.ico');
     await expect(readFile(path.join(getIconsDir(), 'grafana.svg'), 'utf-8')).resolves.toBe('old icon');
+  });
+
+  it('copies a managed icon to a new service basename', async () => {
+    await writeIcon('grafana.png', 'source icon');
+
+    const copiedPath = await copyIconToService('icons/grafana.png', 'grafana-copy');
+    const files = await readdir(getIconsDir());
+
+    expect(copiedPath).toBe('icons/grafana-copy.png');
+    expect(files).toEqual(expect.arrayContaining(['grafana.png', 'grafana-copy.png']));
+    await expect(readFile(path.join(getIconsDir(), 'grafana.png'), 'utf-8')).resolves.toBe('source icon');
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
   });
 });

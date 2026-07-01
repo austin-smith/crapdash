@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CornerRibbon } from '@/components/ui/corner-ribbon';
 import { CategoryIcon } from '@/components/common/icons/category-icon';
 import { SortableList, SortableItem } from '@/components/ui/sortable';
-import { Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { ServiceIcon } from '@/components/common/icons/service-icon';
 import { DeleteConfirmDialog } from '../delete-confirm-dialog';
 import { deleteService, reorderServices } from '@/lib/actions';
@@ -20,11 +20,12 @@ interface ServiceListProps {
   services: Service[];
   categories: Category[];
   onEdit: (service: Service) => void;
+  onDuplicate: (service: Service) => void;
   onDeleted: () => void;
   cacheKey?: number;
 }
 
-export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey }: ServiceListProps) {
+export function ServiceList({ services, categories, onEdit, onDuplicate, onDeleted, cacheKey }: ServiceListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -218,6 +219,7 @@ export function ServiceList({ services, categories, onEdit, onDeleted, cacheKey 
                       <ServiceCardContext
                         service={service}
                         onEdit={onEdit}
+                        onDuplicate={onDuplicate}
                         onDelete={handleDeleteClick}
                         index={index}
                       >
