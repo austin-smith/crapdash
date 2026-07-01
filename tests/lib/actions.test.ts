@@ -1,7 +1,7 @@
 import { chmod, readFile, stat, writeFile } from 'fs/promises';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanupFetchedServiceIcon, createService, updateService } from '@/lib/actions';
+import { cleanupFetchedServiceIcon, createService, deleteService, updateService } from '@/lib/actions';
 import { getConfigPath, getDataDir, getIconsDir } from '@/lib/paths';
 import { ICON_TYPES, type DashboardConfig } from '@/lib/types';
 import { createTestDataDir, removeTestDataDir } from './test-data-dir';
@@ -105,6 +105,51 @@ describe('service icon actions', () => {
 
     const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
     expect(savedConfig.services[1]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' });
+  });
+
+  it('keeps duplicated image icons isolated even when the source basename matches the new id', async () => {
+    await writeConfig({
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [{
+        id: 'grafana',
+        name: 'Grafana',
+        description: 'Dashboards',
+        url: 'https://grafana.example.com',
+        categoryId: 'infra',
+        icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' },
+        active: true,
+      }],
+    });
+    await writeIcon('grafana-copy.png', 'source icon');
+
+    const result = await createService({
+      id: 'grafana-copy',
+      name: 'Grafana (Copy)',
+      description: 'Dashboards',
+      url: 'https://grafana.example.com',
+      categoryId: 'infra',
+      icon: { type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' },
+      active: true,
+      fetchFavicon: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.icon?.type).toBe(ICON_TYPES.IMAGE);
+    expect(result.data.icon?.value).toMatch(/^icons\/grafana-copy-[a-f0-9-]+\.png$/);
+    const duplicateIconFilename = path.basename(result.data.icon?.value ?? '');
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
+    await expect(readFile(path.join(getIconsDir(), duplicateIconFilename), 'utf-8')).resolves.toBe('source icon');
+
+    const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
+    expect(savedConfig.services[0]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana-copy.png' });
+    expect(savedConfig.services[1]?.icon).toEqual(result.data.icon);
+
+    const deleteResult = await deleteService('grafana-copy');
+
+    expect(deleteResult.success).toBe(true);
+    await expect(readFile(path.join(getIconsDir(), 'grafana-copy.png'), 'utf-8')).resolves.toBe('source icon');
+    expect(await fileExists(duplicateIconFilename)).toBe(false);
   });
 
   it('creates the service without an icon when a copied image source file is missing', async () => {

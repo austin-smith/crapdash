@@ -22,7 +22,6 @@ import {
   copyIconToService,
   deleteAppLogo,
   deleteIconFile,
-  deleteServiceIcon,
   getAppLogoFilename,
   isProvisionalIconPath,
   isValidImageExtension,
@@ -83,26 +82,40 @@ function isMissingFileError(error: unknown): boolean {
   );
 }
 
-async function getCreatedServiceIcon(icon: IconConfig | undefined, serviceId: string): Promise<IconConfig | undefined> {
+function getImageIconPath(icon: IconConfig | undefined): string | undefined {
+  return icon?.type === ICON_TYPES.IMAGE ? icon.value : undefined;
+}
+
+function isIconPathReferenced(iconPath: string, services: Service[]): boolean {
+  return services.some((service) => getImageIconPath(service.icon) === iconPath);
+}
+
+async function deleteUnreferencedImageIcon(iconPath: string | undefined, services: Service[]): Promise<void> {
+  if (!iconPath || isIconPathReferenced(iconPath, services)) return;
+
+  await deleteIconFile(iconPath);
+}
+
+async function getCreatedServiceIcon(
+  icon: IconConfig | undefined,
+  serviceId: string,
+  existingServices: Service[]
+): Promise<IconConfig | undefined> {
   if (icon?.type !== ICON_TYPES.IMAGE) {
     return icon;
   }
-
-  const filename = path.basename(icon.value);
-  const iconBaseName = path.parse(filename).name;
 
   if (isProvisionalIconPath(icon.value)) {
     return getPromotedServiceIcon(icon, serviceId);
   }
 
-  if (iconBaseName === serviceId) {
-    return icon;
-  }
-
   try {
+    const isExistingServiceIcon = isIconPathReferenced(icon.value, existingServices);
     return {
       type: ICON_TYPES.IMAGE,
-      value: await copyIconToService(icon.value, serviceId),
+      value: await copyIconToService(icon.value, serviceId, {
+        avoidIconPath: isExistingServiceIcon ? icon.value : undefined,
+      }),
     };
   } catch (error) {
     if (isMissingFileError(error)) {
@@ -666,7 +679,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
     let promotedIconPath: string | null = null;
     const newService: Service = {
       ...validated,
-      icon: await getCreatedServiceIcon(validated.icon, validated.id),
+      icon: await getCreatedServiceIcon(validated.icon, validated.id, config.services),
     };
     if (
       newService.icon?.type === ICON_TYPES.IMAGE &&
@@ -688,7 +701,7 @@ export async function createService(data: ServiceCreateData): Promise<ActionResu
       await writeConfig(config);
     } catch (error) {
       if (downloadedIconPath || promotedIconPath) {
-        await deleteServiceIcon(newService.id);
+        await deleteUnreferencedImageIcon(getImageIconPath(newService.icon), config.services.filter((service) => service.id !== newService.id));
       }
       throw error;
     }
@@ -766,13 +779,7 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
       throw error;
     }
 
-    // If we are moving away from an image icon, remove the old image file after the config persists
-    if (
-      previousService.icon?.type === ICON_TYPES.IMAGE &&
-      nextIcon?.type !== ICON_TYPES.IMAGE
-    ) {
-      await deleteServiceIcon(id);
-    }
+    await deleteUnreferencedImageIcon(getImageIconPath(previousService.icon), config.services);
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -798,12 +805,12 @@ export async function updateService(id: string, data: ServiceFormData): Promise<
 export async function deleteService(id: string): Promise<ActionResult<void>> {
   try {
     const config = await readConfig();
+    const serviceToDelete = config.services.find(svc => svc.id === id);
 
     config.services = config.services.filter(svc => svc.id !== id);
     await writeConfig(config);
 
-    // Delete icon file if it exists
-    await deleteServiceIcon(id);
+    await deleteUnreferencedImageIcon(getImageIconPath(serviceToDelete?.icon), config.services);
 
     revalidatePath('/');
     revalidatePath('/admin');
