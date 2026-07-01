@@ -43,7 +43,8 @@ import { DownloadIcon } from '@/components/ui/animated-icons/download';
 import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
 import { UploadIcon } from '@/components/ui/animated-icons/upload';
 import { importConfig } from '@/lib/actions';
-import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
+import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
+import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig, type ServiceFormData } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
 import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
@@ -72,6 +73,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | undefined>();
   const [editingService, setEditingService] = useState<Service | undefined>();
+  const [serviceDraft, setServiceDraft] = useState<ServiceFormData | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -159,11 +161,19 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
 
   const handleAddService = () => {
     setEditingService(undefined);
+    setServiceDraft(undefined);
     setServiceModalOpen(true);
   };
 
   const handleEditService = (service: Service) => {
     setEditingService(service);
+    setServiceDraft(undefined);
+    setServiceModalOpen(true);
+  };
+
+  const handleDuplicateService = (service: Service) => {
+    setEditingService(undefined);
+    setServiceDraft(createServiceDuplicateDraft(service, services));
     setServiceModalOpen(true);
   };
 
@@ -178,6 +188,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
     setServiceModalOpen(open);
     if (!open) {
       setEditingService(undefined);
+      setServiceDraft(undefined);
     }
   };
 
@@ -422,6 +433,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
                 services={filteredData.services}
                 categories={categories}
                 onEdit={handleEditService}
+                onDuplicate={handleDuplicateService}
                 onDeleted={handleRefresh}
                 cacheKey={refreshKey}
               />
@@ -442,6 +454,8 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
           open={serviceModalOpen}
           onOpenChange={handleServiceModalClose}
           service={editingService}
+          initialValues={serviceDraft}
+          mode={editingService ? 'edit' : serviceDraft ? 'duplicate' : 'create'}
           categories={categories}
           onSuccess={handleRefresh}
           cacheKey={refreshKey}

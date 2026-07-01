@@ -10,6 +10,8 @@ export type DashboardLayout = typeof LAYOUTS[keyof typeof LAYOUTS];
 export const DEFAULT_LAYOUT: DashboardLayout = LAYOUTS.ROWS;
 export const PREFERENCES_COOKIE_NAME = 'preferences';
 export const DEFAULT_APP_TITLE = 'crapdash';
+export const SERVICE_NAME_MAX_LENGTH = 100;
+export const SERVICE_DESCRIPTION_MAX_LENGTH = 500;
 
 export interface Preferences {
   layout: DashboardLayout;

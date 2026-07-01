@@ -1,5 +1,5 @@
 import { parse, type DefaultTreeAdapterTypes } from 'parse5';
-import { SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './validations';
+import { SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './types';
 import { fetchPageHtml, isHttpUrl } from './service-url-fetch';
 
 export interface ServiceMetadata {

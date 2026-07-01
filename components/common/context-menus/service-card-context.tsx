@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Copy, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Clipboard, CopyPlus, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ContextMenu,
@@ -16,6 +16,7 @@ interface ServiceCardContextProps {
   service: Service;
   children: React.ReactNode;
   onEdit: (service: Service) => void;
+  onDuplicate?: (service: Service) => void;
   onDelete: (service: Service) => void;
   index: number;
 }
@@ -28,6 +29,7 @@ export function ServiceCardContext({
   service,
   children,
   onEdit,
+  onDuplicate,
   onDelete,
   index,
 }: ServiceCardContextProps) {
@@ -75,9 +77,15 @@ export function ServiceCardContext({
           <Pencil />
           Edit
         </ContextMenuItem>
+        {onDuplicate && (
+          <ContextMenuItem onClick={() => onDuplicate(service)}>
+            <CopyPlus />
+            Duplicate
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={handleCopyUrl}>
-          <Copy />
+          <Clipboard />
           Copy URL
         </ContextMenuItem>
         <ContextMenuItem onClick={handleOpenInNewTab}>

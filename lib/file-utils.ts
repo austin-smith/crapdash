@@ -12,6 +12,21 @@ interface IconFileBackup {
   buffer: Buffer;
 }
 
+interface WriteIconBufferOptions {
+  baseNameForCleanup?: string;
+  protectedIconPaths?: Set<string>;
+}
+
+export function getAvailableIconBaseName(preferredBaseName: string, reservedIconBasenames: Set<string>): string {
+  let targetBaseName = preferredBaseName;
+
+  while (reservedIconBasenames.has(targetBaseName)) {
+    targetBaseName = `${preferredBaseName}-${randomUUID()}`;
+  }
+
+  return targetBaseName;
+}
+
 async function getIconFilesForBaseName(baseName: string): Promise<string[]> {
   const files = await fs.readdir(getIconsDir()).catch(() => []);
 
@@ -72,17 +87,20 @@ export function getIconFilePath(filename: string): string {
 export async function writeIconBuffer(
   buffer: Buffer,
   filename: string,
-  baseNameForCleanup?: string
+  options: WriteIconBufferOptions = {}
 ): Promise<string> {
   const filePath = getIconFilePath(filename);
   const iconsDir = path.dirname(filePath);
   const tempPath = path.join(iconsDir, `${filename}.tmp-${randomUUID()}`);
+  const { baseNameForCleanup, protectedIconPaths } = options;
 
   await fs.mkdir(iconsDir, { recursive: true });
 
   const existingIcons = baseNameForCleanup ? await fs.readdir(iconsDir).catch(() => []) : [];
   const oldFiles = existingIcons.filter((file) => (
-    path.parse(file).name === baseNameForCleanup && file !== filename
+    path.parse(file).name === baseNameForCleanup &&
+    file !== filename &&
+    !protectedIconPaths?.has(`icons/${file}`)
   ));
 
   try {
@@ -139,15 +157,54 @@ export function isProvisionalIconPath(iconPath: string): boolean {
   );
 }
 
-export async function promoteProvisionalIcon(iconPath: string, serviceId: string): Promise<string> {
+export function isManagedIconPath(iconPath: string): boolean {
+  const filename = path.basename(iconPath);
+
+  return iconPath === `icons/${filename}` && isValidImageExtension(filename);
+}
+
+export async function promoteProvisionalIcon(
+  iconPath: string,
+  serviceId: string,
+  options: {
+    protectedIconPaths?: Set<string>;
+    reservedIconBasenames?: Set<string>;
+  } = {}
+): Promise<string> {
   if (!isProvisionalIconPath(iconPath)) {
     throw new Error('Only provisional icons can be promoted');
   }
 
   const filename = path.basename(iconPath);
   const ext = path.extname(filename).toLowerCase();
+  const targetBaseName = getAvailableIconBaseName(
+    serviceId,
+    options.reservedIconBasenames ?? new Set<string>()
+  );
   const buffer = await fs.readFile(getIconFilePath(filename));
-  return writeIconBuffer(buffer, `${serviceId}${ext}`, serviceId);
+  return writeIconBuffer(buffer, `${targetBaseName}${ext}`, {
+    baseNameForCleanup: targetBaseName,
+    protectedIconPaths: options.protectedIconPaths,
+  });
+}
+
+export async function copyIconToService(
+  iconPath: string,
+  serviceId: string,
+  options: { reservedIconBasenames?: Set<string> } = {}
+): Promise<string> {
+  if (!isManagedIconPath(iconPath)) {
+    throw new Error('Only managed icon paths can be copied');
+  }
+
+  const filename = path.basename(iconPath);
+  const ext = path.extname(filename).toLowerCase();
+  const reservedIconBasenames = options.reservedIconBasenames ?? new Set<string>();
+  const targetBaseName = getAvailableIconBaseName(serviceId, reservedIconBasenames);
+
+  const targetFilename = `${targetBaseName}${ext}`;
+  const buffer = await fs.readFile(getIconFilePath(filename));
+  return writeIconBuffer(buffer, targetFilename, { baseNameForCleanup: targetBaseName });
 }
 
 /**
