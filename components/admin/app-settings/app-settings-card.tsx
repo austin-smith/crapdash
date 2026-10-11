@@ -40,25 +40,33 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [failedLogoValue, setFailedLogoValue] = useState<string | null>(null);
   const [loadedLogoValue, setLoadedLogoValue] = useState<string | null>(null);
+  const [prevAppTitle, setPrevAppTitle] = useState(appTitle);
+  const [prevAppLogo, setPrevAppLogo] = useState(appLogo);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const appLogoSrc = appLogo?.type === ICON_TYPES.IMAGE ? appLogo.value : null;
 
-  useEffect(() => {
+  // Sync local state when the saved settings change (e.g. after a config import)
+  if (appTitle !== prevAppTitle) {
+    setPrevAppTitle(appTitle);
     setTitle(appTitle?.trim() || DEFAULT_APP_TITLE);
-  }, [appTitle]);
+  }
 
-  useEffect(() => {
+  if (appLogo !== prevAppLogo) {
+    const appLogoSrc = appLogo?.type === ICON_TYPES.IMAGE ? appLogo.value : null;
+    const prevAppLogoSrc = prevAppLogo?.type === ICON_TYPES.IMAGE ? prevAppLogo.value : null;
+    setPrevAppLogo(appLogo);
     setLogo(appLogo);
-  }, [appLogo]);
+    if (appLogoSrc !== prevAppLogoSrc) {
+      setFailedLogoValue(null);
+      setLoadedLogoValue(null);
+      setPreviewUrl(null);
+    }
+  }
 
+  // Release the object URL whenever the preview is replaced, cleared, or unmounted
   useEffect(() => {
-    setFailedLogoValue(null);
-    setLoadedLogoValue(null);
-    setPreviewUrl((currentPreviewUrl) => {
-      if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
-      return null;
-    });
-  }, [appLogoSrc]);
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const hasTitleChanges = useMemo(() => {
     const currentTitle = title?.trim() || '';
@@ -103,7 +111,6 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
 
       const nextLogo = result.data.appLogo;
       setLogo(nextLogo);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       toast.success(remove ? 'Logo removed' : 'Logo updated');
       onChange?.(result.data.appTitle, nextLogo ?? undefined);
@@ -121,7 +128,6 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
     if (isLogoSaving) return;
     const file = e.target.files?.[0];
     if (file) {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(file));
       void persistLogoChange({ file });
     }
@@ -136,7 +142,6 @@ export function AppSettingsCard({ appTitle, appLogo, onChange }: AppSettingsCard
       fileInputRef.current.value = '';
     }
     setShowRemoveConfirm(false);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     await persistLogoChange({ remove: true });
   };
