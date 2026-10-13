@@ -391,6 +391,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
                 cacheKey={cacheKey}
                 searchTokens={searchResult.tokens}
                 selectedServiceId={activeServiceId}
+                hostMatchServiceIds={searchResult.hostMatchServiceIds}
               />
             ))}
           </div>
