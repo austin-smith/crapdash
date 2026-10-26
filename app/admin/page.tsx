@@ -25,6 +25,7 @@ export default async function AdminPage() {
     <AdminClient
       appTitle={config.appTitle}
       appLogo={config.appLogo}
+      search={config.search}
       categories={config.categories}
       services={config.services}
       initialSettings={initialSettings}

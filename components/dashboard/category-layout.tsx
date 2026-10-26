@@ -11,6 +11,7 @@ interface CategoryLayoutProps {
   services: Service[];
   layout: DashboardLayout;
   expandOnHover: boolean;
+  openLinksInNewTab: boolean;
   onEditService: (service: Service) => void;
   onDeleteService: (service: Service) => void;
   onFocusService?: (service: Service) => void;
@@ -25,6 +26,7 @@ export function CategoryLayout({
   services,
   layout,
   expandOnHover,
+  openLinksInNewTab,
   onEditService,
   onDeleteService,
   onFocusService,
@@ -68,6 +70,7 @@ export function CategoryLayout({
             <ServiceCard
               service={service}
               expandOnHover={expandOnHover}
+              openInNewTab={openLinksInNewTab}
               cacheKey={cacheKey}
               searchTokens={searchTokens}
               isKeyboardSelected={service.id === selectedServiceId}

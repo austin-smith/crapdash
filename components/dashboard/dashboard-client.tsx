@@ -24,15 +24,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { deleteService } from '@/lib/actions';
 import { DASHBOARD_SERVICE_ID_ATTRIBUTE, getDashboardServiceElementId } from '@/lib/dashboard-dom';
 import { getDashboardSearchResult } from '@/lib/dashboard-search';
+import { openLink } from '@/lib/link-target';
 import { getNextSpatialItemId, type SpatialDirection, type SpatialItem } from '@/lib/spatial-navigation';
 import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
+import { buildSearchUrl, getSearchEnterUrl, type WebSearchTarget } from '@/lib/web-search';
 import { CategoryLayout } from './category-layout';
+import { WebSearchRow } from './web-search-row';
 
 interface DashboardClientProps {
   appTitle?: string;
   appLogo?: IconConfig;
   categories: Category[];
   services: Service[];
+  webSearch: WebSearchTarget | null;
   initialSettings: Partial<Preferences>;
 }
 
@@ -49,6 +53,18 @@ function getActiveServiceId(
   }
 
   return searchResult.launchServices[0]?.id ?? null;
+}
+
+function getWebSearchUrl(
+  webSearch: WebSearchTarget | null,
+  searchResult: ReturnType<typeof getDashboardSearchResult>,
+  query: string
+): string | null {
+  if (!webSearch || !searchResult.isSearching) {
+    return null;
+  }
+
+  return buildSearchUrl(webSearch.urlTemplate, query.trim());
 }
 
 function getSpatialDirection(key: string): SpatialDirection | null {
@@ -85,7 +101,7 @@ function getVisibleServiceItems(): SpatialItem[] {
   });
 }
 
-export function DashboardClient({ appTitle, appLogo, categories, services, initialSettings }: DashboardClientProps) {
+export function DashboardClient({ appTitle, appLogo, categories, services, webSearch, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -146,11 +162,21 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
     return searchResult.launchServices.find((service) => service.id === activeServiceId) ?? null;
   }, [activeServiceId, searchResult]);
 
-  const searchAssistiveText = searchResult.isSearching
-    ? activeService
-      ? `${activeService.name} selected. Press Enter to open.`
-      : 'No services found.'
-    : undefined;
+  const webSearchUrl = getWebSearchUrl(webSearch, searchResult, searchQuery);
+
+  let searchAssistiveText: string | undefined;
+  if (searchResult.isSearching) {
+    if (activeService) {
+      searchAssistiveText = `${activeService.name} selected. Press Enter to open.`;
+      if (webSearch) {
+        searchAssistiveText += ` Press Shift+Enter to search ${webSearch.name}.`;
+      }
+    } else {
+      searchAssistiveText = webSearch
+        ? `No services found. Press Enter to search ${webSearch.name}.`
+        : 'No services found.';
+    }
+  }
 
   const updateSelectedServiceId = useCallback((serviceId: string | null) => {
     selectedServiceIdRef.current = serviceId;
@@ -213,22 +239,29 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       ? currentSearchResult.launchServices.find((service) => service.id === currentActiveServiceId) ?? null
       : null;
 
-    if (!currentSearchResult.isSearching || currentSearchResult.launchServices.length === 0) {
+    if (!currentSearchResult.isSearching) {
       return;
     }
 
     const direction = getSpatialDirection(event.key);
-    if (direction === 'down' || direction === 'up') {
+    if ((direction === 'down' || direction === 'up') && currentSearchResult.launchServices.length > 0) {
       event.preventDefault();
       moveServiceSelection(direction, currentActiveServiceId);
       return;
     }
 
-    if (event.key === 'Enter' && currentActiveService) {
+    if (event.key === 'Enter') {
+      const url = getSearchEnterUrl({
+        activeService: currentActiveService,
+        webSearchUrl: getWebSearchUrl(webSearch, currentSearchResult, currentQuery),
+        preferWebSearch: event.shiftKey,
+      });
+      if (!url) return;
+
       event.preventDefault();
-      window.open(currentActiveService.url, '_blank', 'noopener,noreferrer');
+      openLink(url, settings.openLinksInNewTab);
     }
-  }, [categories, moveServiceSelection, services, updateSelectedServiceId]);
+  }, [categories, moveServiceSelection, services, settings.openLinksInNewTab, updateSelectedServiceId, webSearch]);
 
   const handleServiceNavigationKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -347,7 +380,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        {services.length === 0 ? (
+        {services.length === 0 && !webSearchUrl ? (
           <Empty className="py-16">
             <EmptyHeader>
               <EmptyMedia>
@@ -366,35 +399,61 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
             </AnimateIcon>
           </Empty>
         ) : searchResult.groups.length === 0 ? (
-          <p className="text-center py-12 text-muted-foreground">
-            No services found matching your search.
-          </p>
-        ) : (
-          <div
-            onKeyDown={handleServiceNavigationKeyDown}
-            className={
-              settings.layout === LAYOUTS.COLUMNS
-                ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
-                : 'flex flex-col gap-12'
-            }
-          >
-            {searchResult.groups.map(({ category, services: categoryServices }) => (
-              <CategoryLayout
-                key={category.id}
-                category={category}
-                services={categoryServices}
-                layout={settings.layout}
-                expandOnHover={settings.expandOnHover}
-                onEditService={handleEditService}
-                onDeleteService={handleDeleteService}
-                onFocusService={handleFocusService}
-                cacheKey={cacheKey}
-                searchTokens={searchResult.tokens}
-                selectedServiceId={activeServiceId}
-                hostMatchServiceIds={searchResult.hostMatchServiceIds}
+          webSearch && webSearchUrl ? (
+            <div className="mx-auto max-w-xl py-12">
+              <WebSearchRow
+                engineName={webSearch.name}
+                query={searchQuery.trim()}
+                url={webSearchUrl}
+                isSelected
+                openInNewTab={settings.openLinksInNewTab}
               />
-            ))}
-          </div>
+            </div>
+          ) : (
+            <p className="text-center py-12 text-muted-foreground">
+              No services found matching your search.
+            </p>
+          )
+        ) : (
+          <>
+            {webSearch && webSearchUrl && (
+              <div className="mb-8">
+                <WebSearchRow
+                  engineName={webSearch.name}
+                  query={searchQuery.trim()}
+                  url={webSearchUrl}
+                  isSelected={false}
+                  openInNewTab={settings.openLinksInNewTab}
+                />
+              </div>
+            )}
+            <div
+              onKeyDown={handleServiceNavigationKeyDown}
+              className={
+                settings.layout === LAYOUTS.COLUMNS
+                  ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6'
+                  : 'flex flex-col gap-12'
+              }
+            >
+              {searchResult.groups.map(({ category, services: categoryServices }) => (
+                <CategoryLayout
+                  key={category.id}
+                  category={category}
+                  services={categoryServices}
+                  layout={settings.layout}
+                  expandOnHover={settings.expandOnHover}
+                  openLinksInNewTab={settings.openLinksInNewTab}
+                  onEditService={handleEditService}
+                  onDeleteService={handleDeleteService}
+                  onFocusService={handleFocusService}
+                  cacheKey={cacheKey}
+                  searchTokens={searchResult.tokens}
+                  selectedServiceId={activeServiceId}
+                  hostMatchServiceIds={searchResult.hostMatchServiceIds}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 

@@ -165,6 +165,23 @@ export function PreferencesDialog({ settings, onSettingChange, open, onOpenChang
 
           <Separator />
 
+          {/* Open Links in New Tab Setting */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor="open-links-in-new-tab">Open links in a new tab</Label>
+              <span className="text-[11px] text-muted-foreground">
+                Applies to service cards and search
+              </span>
+            </div>
+            <Switch
+              id="open-links-in-new-tab"
+              checked={settings.openLinksInNewTab}
+              onCheckedChange={(checked) => onSettingChange('openLinksInNewTab', checked)}
+            />
+          </div>
+
+          <Separator />
+
           {/* Keyboard Shortcuts */}
           <div className="flex flex-col gap-2">
             <Label className="text-muted-foreground">Keyboard shortcuts</Label>

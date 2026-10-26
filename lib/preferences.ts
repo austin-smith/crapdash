@@ -21,6 +21,10 @@ export function parsePreferences(cookieValue: string | undefined): Partial<Prefe
       settings.expandOnHover = parsed.expandOnHover;
     }
 
+    if (typeof parsed.openLinksInNewTab === 'boolean') {
+      settings.openLinksInNewTab = parsed.openLinksInNewTab;
+    }
+
     if (
       parsed.appearance === RANDOM_APPEARANCE ||
       APPEARANCES.includes(parsed.appearance as Appearance)

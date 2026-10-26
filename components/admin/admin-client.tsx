@@ -44,8 +44,9 @@ import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
 import { UploadIcon } from '@/components/ui/animated-icons/upload';
 import { importConfig } from '@/lib/actions';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
-import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig, type ServiceFormData } from '@/lib/types';
+import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig, type SearchSettings, type ServiceFormData } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
+import { SearchSettingsCard } from '@/components/admin/search-settings/search-settings-card';
 import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
 
@@ -56,17 +57,19 @@ const ServiceList = dynamic(() => import('@/components/admin/services/service-li
 interface AdminClientProps {
   appTitle?: string;
   appLogo?: IconConfig;
+  search?: SearchSettings;
   categories: Category[];
   services: Service[];
   initialSettings: Partial<Preferences>;
 }
 
-export function AdminClient({ appTitle, appLogo, categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
+export function AdminClient({ appTitle, appLogo, search, categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
   const [appTitleState, setAppTitleState] = useState<string>(appTitle ?? '');
   const [appLogoState, setAppLogoState] = useState<IconConfig | undefined>(appLogo);
+  const [searchSettingsState, setSearchSettingsState] = useState<SearchSettings | undefined>(search);
   const { settings, updateSetting } = usePreferences({ initialSettings });
   const [showFooter, setShowFooter] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -234,6 +237,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
       setServices(result.data.config.services);
       setAppTitleState(result.data.config.appTitle ?? '');
       setAppLogoState(result.data.config.appLogo);
+      setSearchSettingsState(result.data.config.search);
       setRefreshKey((value) => value + 1);
       setPendingImportFile(null);
       setImportConfirmOpen(false);
@@ -345,6 +349,17 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
                 setAppTitleState(nextTitle ?? '');
                 setAppLogoState(nextLogo);
               }}
+            />
+          </section>
+
+          {/* Search Settings */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold font-mono">Search</h2>
+            </div>
+            <SearchSettingsCard
+              search={searchSettingsState}
+              onChange={setSearchSettingsState}
             />
           </section>
 
@@ -468,6 +483,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
             setServices(config.services);
             setAppTitleState(config.appTitle ?? '');
             setAppLogoState(config.appLogo);
+            setSearchSettingsState(config.search);
             setRefreshKey((value) => value + 1);
             router.refresh();
           }}

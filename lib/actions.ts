@@ -13,6 +13,7 @@ import {
   categorySchema,
   categoryCreateSchema,
   dashboardConfigImportSchema,
+  searchSettingsSchema,
   serviceSchema,
   serviceCreateSchema,
   serviceIdSchema,
@@ -42,6 +43,7 @@ import {
   type IconConfig,
   type DashboardConfig,
   type ImportConfigResult,
+  type SearchSettings,
 } from './types';
 
 const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
@@ -607,6 +609,36 @@ export async function updateAppSettings(data: AppSettingsInput): Promise<ActionR
     return {
       success: false,
       errors: [{ field: 'general', message: 'Failed to update app settings' }],
+    };
+  }
+}
+
+export async function updateSearchSettings(data: SearchSettings): Promise<ActionResult<SearchSettings>> {
+  try {
+    const validated = searchSettingsSchema.parse(data);
+    const { categories, services, ...settings } = await readConfig();
+
+    // Keep settings above the category and service lists in config.json
+    await writeConfig({ ...settings, search: validated, categories, services });
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: validated };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        errors: error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+        })),
+      };
+    }
+    console.error('Update search settings error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to update search settings' }],
     };
   }
 }

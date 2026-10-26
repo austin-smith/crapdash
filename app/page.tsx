@@ -5,6 +5,7 @@ import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { PREFERENCES_COOKIE_NAME } from '@/lib/types';
 import { parsePreferences } from '@/lib/preferences';
 import { getAppTitle } from '@/lib/utils';
+import { getWebSearchTarget } from '@/lib/web-search';
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await readConfigOrDefault();
@@ -27,6 +28,7 @@ export default async function Page() {
       appLogo={config.appLogo}
       categories={config.categories}
       services={activeServices}
+      webSearch={getWebSearchTarget(config.search)}
       initialSettings={initialSettings}
     />
   );

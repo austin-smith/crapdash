@@ -17,13 +17,29 @@ export interface Preferences {
   layout: DashboardLayout;
   expandOnHover: boolean;
   appearance: AppearanceSetting;
+  openLinksInNewTab: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   layout: DEFAULT_LAYOUT,
   expandOnHover: false,
   appearance: DEFAULT_APPEARANCE,
+  openLinksInNewTab: true,
 };
+
+export const SEARCH_ENGINES = {
+  DUCKDUCKGO: 'duckduckgo',
+  GOOGLE: 'google',
+  KAGI: 'kagi',
+  BING: 'bing',
+  CUSTOM: 'custom',
+  NONE: 'none',
+} as const;
+
+export type SearchEngine = typeof SEARCH_ENGINES[keyof typeof SEARCH_ENGINES];
+
+export const DEFAULT_SEARCH_ENGINE: SearchEngine = SEARCH_ENGINES.DUCKDUCKGO;
+export const SEARCH_QUERY_PLACEHOLDER = '%s';
 
 export const ICON_TYPES = {
   IMAGE: 'image',
@@ -54,9 +70,15 @@ export interface Service {
   active: boolean;
 }
 
+export interface SearchSettings {
+  engine: SearchEngine;
+  customUrl?: string;
+}
+
 export interface DashboardConfig {
   appTitle?: string;
   appLogo?: IconConfig;
+  search?: SearchSettings;
   categories: Category[];
   services: Service[];
 }

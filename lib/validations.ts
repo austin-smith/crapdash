@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { ICON_TYPES, SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './types';
+import {
+  ICON_TYPES,
+  SEARCH_ENGINES,
+  SEARCH_QUERY_PLACEHOLDER,
+  SERVICE_DESCRIPTION_MAX_LENGTH,
+  SERVICE_NAME_MAX_LENGTH,
+} from './types';
 import { resolveLucideIconName } from './lucide-icons';
 
 export const slugSchema = z.string().regex(
@@ -86,6 +92,40 @@ export const appSettingsSchema = z.object({
   appLogo: imageIconSchema.nullable().optional(),
 });
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+const searchUrlTemplateSchema = z
+  .string()
+  .trim()
+  .refine(isHttpUrl, 'Must be a valid http or https URL')
+  .refine(
+    (value) => value.includes(SEARCH_QUERY_PLACEHOLDER),
+    `Must include ${SEARCH_QUERY_PLACEHOLDER} where the search query goes`
+  );
+
+export const searchSettingsSchema = z
+  .object({
+    engine: z.enum(SEARCH_ENGINES, { message: 'Choose a search engine' }),
+    customUrl: searchUrlTemplateSchema.optional(),
+  })
+  .strict()
+  .superRefine((settings, ctx) => {
+    if (settings.engine === SEARCH_ENGINES.CUSTOM && !settings.customUrl) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Custom search URL is required',
+        path: ['customUrl'],
+      });
+    }
+  });
+
 const importAppTitleSchema = z.preprocess(
   (value) => (value === null ? undefined : value),
   z
@@ -109,6 +149,7 @@ export const dashboardConfigImportSchema = z
   .object({
     appTitle: importAppTitleSchema,
     appLogo: importAppLogoSchema,
+    search: searchSettingsSchema.optional(),
     categories: z.array(categoryCreateSchema),
     services: z.array(serviceImportSchema),
   })

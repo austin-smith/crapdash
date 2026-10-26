@@ -6,12 +6,13 @@ import {
   createService,
   deleteService,
   updateAppSettings,
+  updateSearchSettings,
   updateService,
   uploadAppLogo,
   uploadServiceIcon,
 } from '@/lib/actions';
 import { getConfigPath, getDataDir, getIconsDir } from '@/lib/paths';
-import { ICON_TYPES, type DashboardConfig } from '@/lib/types';
+import { ICON_TYPES, SEARCH_ENGINES, type DashboardConfig } from '@/lib/types';
 import { createTestDataDir, removeTestDataDir } from './test-data-dir';
 
 let rootDir: string;
@@ -534,5 +535,57 @@ describe('service icon actions', () => {
     const savedConfig = JSON.parse(await readFile(getConfigPath(), 'utf-8')) as DashboardConfig;
     expect(savedConfig.services[0]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana.svg' });
     expect(savedConfig.services[1]?.icon).toEqual({ type: ICON_TYPES.IMAGE, value: 'icons/grafana.png' });
+  });
+});
+
+describe('search settings actions', () => {
+  beforeEach(async () => {
+    rootDir = await createTestDataDir('search-actions');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    await removeTestDataDir(rootDir);
+  });
+
+  it('saves search settings above categories and services', async () => {
+    await writeConfig({
+      appTitle: 'Home',
+      categories: [{ id: 'infra', name: 'Infrastructure' }],
+      services: [],
+    });
+
+    const result = await updateSearchSettings({
+      engine: SEARCH_ENGINES.CUSTOM,
+      customUrl: ' https://searx.local/search?q=%s ',
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: { engine: SEARCH_ENGINES.CUSTOM, customUrl: 'https://searx.local/search?q=%s' },
+    });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(Object.keys(saved)).toEqual(['appTitle', 'search', 'categories', 'services']);
+    expect(saved.search).toEqual({ engine: SEARCH_ENGINES.CUSTOM, customUrl: 'https://searx.local/search?q=%s' });
+  });
+
+  it('returns field errors without writing invalid settings', async () => {
+    await writeConfig({
+      search: { engine: SEARCH_ENGINES.GOOGLE },
+      categories: [],
+      services: [],
+    });
+
+    const result = await updateSearchSettings({
+      engine: SEARCH_ENGINES.CUSTOM,
+      customUrl: 'https://searx.local/search',
+    });
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: 'customUrl', message: 'Must include %s where the search query goes' }],
+    });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(saved.search).toEqual({ engine: SEARCH_ENGINES.GOOGLE });
   });
 });

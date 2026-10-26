@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ICON_TYPES } from '@/lib/types';
-import { dashboardConfigImportSchema } from '@/lib/validations';
+import { ICON_TYPES, SEARCH_ENGINES } from '@/lib/types';
+import { dashboardConfigImportSchema, searchSettingsSchema } from '@/lib/validations';
 
 describe('dashboard config import validation', () => {
   it('defaults imported services to active', () => {
@@ -117,5 +117,73 @@ describe('dashboard config import validation', () => {
     });
 
     expect(result.categories[0]?.icon).toEqual({ type: ICON_TYPES.ICON, value: 'Settings' });
+  });
+});
+
+describe('search settings validation', () => {
+  it('accepts built-in engines and trims custom URLs', () => {
+    expect(searchSettingsSchema.parse({ engine: SEARCH_ENGINES.GOOGLE })).toEqual({
+      engine: SEARCH_ENGINES.GOOGLE,
+    });
+    expect(searchSettingsSchema.parse({
+      engine: SEARCH_ENGINES.CUSTOM,
+      customUrl: '  http://searx.local/search?q=%s  ',
+    })).toEqual({
+      engine: SEARCH_ENGINES.CUSTOM,
+      customUrl: 'http://searx.local/search?q=%s',
+    });
+  });
+
+  it('requires a URL for the custom engine', () => {
+    const result = searchSettingsSchema.safeParse({ engine: SEARCH_ENGINES.CUSTOM });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ message: 'Custom search URL is required', path: ['customUrl'] }),
+    ]);
+  });
+
+  it.each([
+    ['javascript:alert(%s)', 'Must be a valid http or https URL'],
+    ['ftp://files.local/%s', 'Must be a valid http or https URL'],
+    ['not a url %s', 'Must be a valid http or https URL'],
+    ['https://searx.local/search', 'Must include %s where the search query goes'],
+  ])('rejects the custom URL %j', (customUrl, message) => {
+    const result = searchSettingsSchema.safeParse({ engine: SEARCH_ENGINES.CUSTOM, customUrl });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ message, path: ['customUrl'] }),
+    ]);
+  });
+
+  it('rejects unknown engines and keys', () => {
+    expect(searchSettingsSchema.safeParse({ engine: 'yahoo' }).success).toBe(false);
+    expect(searchSettingsSchema.safeParse({ engine: SEARCH_ENGINES.BING, extra: true }).success).toBe(false);
+  });
+
+  it('accepts configs with and without search settings', () => {
+    expect(dashboardConfigImportSchema.parse({ categories: [], services: [] }).search).toBeUndefined();
+    expect(dashboardConfigImportSchema.parse({
+      search: { engine: SEARCH_ENGINES.NONE },
+      categories: [],
+      services: [],
+    }).search).toEqual({ engine: SEARCH_ENGINES.NONE });
+  });
+
+  it('rejects invalid search settings in imported configs', () => {
+    const result = dashboardConfigImportSchema.safeParse({
+      search: { engine: SEARCH_ENGINES.CUSTOM, customUrl: 'https://searx.local/' },
+      categories: [],
+      services: [],
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ path: ['search', 'customUrl'] }),
+    ]);
   });
 });
