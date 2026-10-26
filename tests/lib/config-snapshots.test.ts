@@ -180,6 +180,25 @@ describe('config snapshots', () => {
     ]);
   });
 
+  it('keeps new snapshots when future-dated files fill the retention limit', async () => {
+    process.env[SNAPSHOT_LIMIT_ENV] = '2';
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-11T14:02:12.345Z'));
+    await mkdir(getBackupsDir(), { recursive: true });
+    for (const id of ['config-2099-01-01T00-00-00-000Z-edit', 'config-2099-01-02T00-00-00-000Z-edit']) {
+      await writeFile(path.join(getBackupsDir(), `${id}.json`), serialize(configWithTitle(id)));
+    }
+    await seedConfig(configWithTitle('v0'));
+
+    await writeConfig(configWithTitle('v1'));
+    await writeConfig(configWithTitle('v2'));
+
+    // Future-dated files are pruned before snapshots taken at the current time
+    await expect(readSnapshotRaws()).resolves.toEqual([
+      serialize(configWithTitle('v1')),
+      serialize(configWithTitle('v0')),
+    ]);
+  });
+
   it('creates no snapshots when the limit is 0 and keeps existing ones', async () => {
     await seedConfig(configWithTitle('v0'));
     await writeConfig(configWithTitle('v1'));

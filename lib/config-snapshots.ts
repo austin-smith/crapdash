@@ -119,6 +119,18 @@ async function pruneConfigSnapshots(snapshots: ConfigSnapshotInfo[], limit: numb
   );
 }
 
+function isFutureDated(snapshot: ConfigSnapshotInfo, now: number): boolean {
+  return Date.parse(snapshot.createdAt) > now + SNAPSHOT_ORDERING_WINDOW_MS;
+}
+
+/** Orders snapshots for retention: future-dated files (clock jumps, hand-copied backups) are pruned first. */
+function rankForRetention(snapshots: ConfigSnapshotInfo[], now: number): ConfigSnapshotInfo[] {
+  return [
+    ...snapshots.filter((snapshot) => !isFutureDated(snapshot, now)),
+    ...snapshots.filter((snapshot) => isFutureDated(snapshot, now)),
+  ];
+}
+
 async function isSnapshotContent(id: string, raw: string): Promise<boolean> {
   try {
     return (await readConfigSnapshot(id))?.raw === raw;
@@ -145,14 +157,13 @@ export async function createConfigSnapshot(
 
   const now = Date.now();
   const existing = await listConfigSnapshots();
-  // Ignore future-dated files (clock jumps, hand-copied backups) so they can't skew new timestamps.
-  const latest = existing.find(
-    (snapshot) => Date.parse(snapshot.createdAt) <= now + SNAPSHOT_ORDERING_WINDOW_MS
-  );
+  const ranked = rankForRetention(existing, now);
+  // Ignore future-dated files so they can't skew new timestamps.
+  const latest = ranked.find((snapshot) => !isFutureDated(snapshot, now));
 
   // The latest snapshot already holds this content, e.g. when the write after it failed.
   if (latest && (await isSnapshotContent(latest.id, previousRaw))) {
-    await pruneConfigSnapshots(existing, limit);
+    await pruneConfigSnapshots(ranked, limit);
     return null;
   }
 
@@ -163,7 +174,8 @@ export async function createConfigSnapshot(
   await writeSnapshotFile(id, previousRaw);
 
   const created = parseConfigSnapshotId(id)!;
-  await pruneConfigSnapshots([created, ...existing].sort(compareNewestFirst), limit);
+  // Always keep the snapshot for this write, even if it lands just past the ordering window.
+  await pruneConfigSnapshots([created, ...ranked], limit);
 
   return created;
 }
