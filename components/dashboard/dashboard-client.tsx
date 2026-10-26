@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { deleteService } from '@/lib/actions';
 import { DASHBOARD_SERVICE_ID_ATTRIBUTE, getDashboardServiceElementId } from '@/lib/dashboard-dom';
 import { getDashboardSearchResult } from '@/lib/dashboard-search';
+import { openLink } from '@/lib/link-target';
 import { getNextSpatialItemId, type SpatialDirection, type SpatialItem } from '@/lib/spatial-navigation';
 import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
 import { CategoryLayout } from './category-layout';
@@ -228,9 +229,9 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
 
     if (event.key === 'Enter' && currentActiveService) {
       event.preventDefault();
-      window.open(currentActiveService.url, '_blank', 'noopener,noreferrer');
+      openLink(currentActiveService.url, settings.openLinksInNewTab);
     }
-  }, [categories, moveServiceSelection, services, updateSelectedServiceId]);
+  }, [categories, moveServiceSelection, services, settings.openLinksInNewTab, updateSelectedServiceId]);
 
   const handleServiceNavigationKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -391,6 +392,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
                 services={categoryServices}
                 layout={settings.layout}
                 expandOnHover={settings.expandOnHover}
+                openLinksInNewTab={settings.openLinksInNewTab}
                 onEditService={handleEditService}
                 onDeleteService={handleDeleteService}
                 onFocusService={handleFocusService}

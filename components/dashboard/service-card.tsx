@@ -6,12 +6,14 @@ import { ServiceIcon } from '@/components/common/icons/service-icon';
 import { HighlightedText } from '@/components/common/highlighted-text';
 import { DASHBOARD_SERVICE_ID_ATTRIBUTE } from '@/lib/dashboard-dom';
 import { getUrlHostParts } from '@/lib/dashboard-search';
+import { getLinkTargetProps } from '@/lib/link-target';
 import { cn } from '@/lib/utils';
 import type { Service } from '@/lib/types';
 
 interface ServiceCardProps {
   service: Service;
   expandOnHover: boolean;
+  openInNewTab: boolean;
   cacheKey?: number;
   searchTokens?: string[];
   isKeyboardSelected?: boolean;
@@ -23,6 +25,7 @@ interface ServiceCardProps {
 export function ServiceCard({
   service,
   expandOnHover,
+  openInNewTab,
   cacheKey,
   searchTokens = [],
   isKeyboardSelected = false,
@@ -50,8 +53,7 @@ export function ServiceCard({
       id={domId}
       ref={ref}
       href={service.url}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...getLinkTargetProps(openInNewTab)}
       {...{ [DASHBOARD_SERVICE_ID_ATTRIBUTE]: service.id }}
       data-launch-selected={isKeyboardSelected ? 'true' : undefined}
       className={cn(
