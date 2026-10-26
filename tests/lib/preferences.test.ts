@@ -19,10 +19,12 @@ describe('parsePreferences', () => {
       layout: LAYOUTS.COLUMNS,
       expandOnHover: true,
       appearance: 'mono',
+      openLinksInNewTab: false,
     }))).toEqual({
       layout: LAYOUTS.COLUMNS,
       expandOnHover: true,
       appearance: 'mono',
+      openLinksInNewTab: false,
     });
   });
 
@@ -31,6 +33,7 @@ describe('parsePreferences', () => {
       layout: 'grid',
       expandOnHover: false,
       appearance: 'unknown',
+      openLinksInNewTab: 'yes',
     }))).toEqual({
       expandOnHover: false,
     });

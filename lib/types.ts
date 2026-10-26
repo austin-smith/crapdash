@@ -17,12 +17,14 @@ export interface Preferences {
   layout: DashboardLayout;
   expandOnHover: boolean;
   appearance: AppearanceSetting;
+  openLinksInNewTab: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   layout: DEFAULT_LAYOUT,
   expandOnHover: false,
   appearance: DEFAULT_APPEARANCE,
+  openLinksInNewTab: true,
 };
 
 export const ICON_TYPES = {
