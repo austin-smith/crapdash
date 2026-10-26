@@ -1,6 +1,14 @@
 import { z } from 'zod';
-import { ICON_TYPES, SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_NAME_MAX_LENGTH } from './types';
+import {
+  CLOCK_HOUR_CYCLES,
+  ICON_TYPES,
+  SERVICE_DESCRIPTION_MAX_LENGTH,
+  SERVICE_NAME_MAX_LENGTH,
+  WEATHER_UNITS,
+  WIDGET_TYPES,
+} from './types';
 import { resolveLucideIconName } from './lucide-icons';
+import { isValidTimeZone } from './widgets';
 
 export const slugSchema = z.string().regex(
   /^[a-z0-9-]+$/i,
@@ -86,6 +94,65 @@ export const appSettingsSchema = z.object({
   appLogo: imageIconSchema.nullable().optional(),
 });
 
+const timeZoneSchema = z
+  .string()
+  .trim()
+  .min(1, 'Time zone is required')
+  .refine(isValidTimeZone, 'Must be a valid IANA time zone, e.g. "America/New_York"');
+
+export const clockWidgetSettingsSchema = z.object({
+  type: z.literal(WIDGET_TYPES.CLOCK),
+  hourCycle: z.enum([CLOCK_HOUR_CYCLES.H12, CLOCK_HOUR_CYCLES.H24]).optional(),
+  timeZone: timeZoneSchema.optional(),
+  showSeconds: z.boolean().optional(),
+  showDate: z.boolean().optional(),
+});
+
+export const weatherLocationSchema = z.object({
+  name: z.string().trim().min(1, 'Location name is required').max(100, 'Location name must be less than 100 characters'),
+  latitude: z.number().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+  longitude: z.number().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+});
+
+export const weatherWidgetSettingsSchema = z.object({
+  type: z.literal(WIDGET_TYPES.WEATHER),
+  location: weatherLocationSchema,
+  units: z.enum([WEATHER_UNITS.METRIC, WEATHER_UNITS.IMPERIAL]),
+});
+
+/** Type-specific widget options as submitted by the admin forms (no id/enabled). */
+export const widgetSettingsSchema = z.discriminatedUnion('type', [
+  clockWidgetSettingsSchema,
+  weatherWidgetSettingsSchema,
+]);
+
+const widgetMetaShape = {
+  id: slugSchema,
+  enabled: z.boolean(),
+};
+
+export const widgetSchema = z.discriminatedUnion('type', [
+  clockWidgetSettingsSchema.extend(widgetMetaShape),
+  weatherWidgetSettingsSchema.extend(widgetMetaShape),
+]);
+
+// Imported/hand-edited configs may omit `enabled`; treat it like service `active`.
+const widgetImportMetaShape = {
+  ...widgetMetaShape,
+  enabled: z.boolean().optional().default(true),
+};
+
+const widgetImportSchema = z.discriminatedUnion('type', [
+  clockWidgetSettingsSchema.extend(widgetImportMetaShape),
+  weatherWidgetSettingsSchema.extend(widgetImportMetaShape),
+]);
+
+export const weatherLocationSearchSchema = z
+  .string()
+  .trim()
+  .min(2, 'Enter at least 2 characters')
+  .max(100, 'Search must be less than 100 characters');
+
 const importAppTitleSchema = z.preprocess(
   (value) => (value === null ? undefined : value),
   z
@@ -111,11 +178,25 @@ export const dashboardConfigImportSchema = z
     appLogo: importAppLogoSchema,
     categories: z.array(categoryCreateSchema),
     services: z.array(serviceImportSchema),
+    widgets: z.array(widgetImportSchema).optional(),
   })
   .strict()
   .superRefine((config, ctx) => {
     const categoryIndexById = new Map<string, number>();
     const serviceIndexById = new Map<string, number>();
+    const widgetIndexById = new Map<string, number>();
+
+    for (const [index, widget] of (config.widgets ?? []).entries()) {
+      if (widgetIndexById.has(widget.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate widget id "${widget.id}"`,
+          path: ['widgets', index, 'id'],
+        });
+      } else {
+        widgetIndexById.set(widget.id, index);
+      }
+    }
 
     for (const [index, category] of config.categories.entries()) {
       const existingIndex = categoryIndexById.get(category.id);
@@ -157,4 +238,5 @@ export const dashboardConfigImportSchema = z
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type ServiceInput = z.infer<typeof serviceSchema>;
 export type ServiceCreateInput = z.infer<typeof serviceCreateSchema>;
+export type WidgetSettingsInput = z.input<typeof widgetSettingsSchema>;
 export type DashboardConfigImportInput = z.infer<typeof dashboardConfigImportSchema>;

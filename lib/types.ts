@@ -54,11 +54,65 @@ export interface Service {
   active: boolean;
 }
 
+export const WIDGET_TYPES = {
+  CLOCK: 'clock',
+  WEATHER: 'weather',
+} as const;
+
+export type WidgetType = typeof WIDGET_TYPES[keyof typeof WIDGET_TYPES];
+
+export const CLOCK_HOUR_CYCLES = {
+  H12: '12h',
+  H24: '24h',
+} as const;
+
+export type ClockHourCycle = typeof CLOCK_HOUR_CYCLES[keyof typeof CLOCK_HOUR_CYCLES];
+
+export interface ClockWidgetSettings {
+  type: typeof WIDGET_TYPES.CLOCK;
+  /** Omit to use the browser locale's default. */
+  hourCycle?: ClockHourCycle;
+  /** IANA time zone name. Omit to use the browser's time zone. */
+  timeZone?: string;
+  showSeconds?: boolean;
+  showDate?: boolean;
+}
+
+export const WEATHER_UNITS = {
+  METRIC: 'metric',
+  IMPERIAL: 'imperial',
+} as const;
+
+export type WeatherUnits = typeof WEATHER_UNITS[keyof typeof WEATHER_UNITS];
+
+export interface WeatherLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface WeatherWidgetSettings {
+  type: typeof WIDGET_TYPES.WEATHER;
+  location: WeatherLocation;
+  units: WeatherUnits;
+}
+
+/** Type-specific widget options, discriminated by `type`. */
+export type WidgetSettings = ClockWidgetSettings | WeatherWidgetSettings;
+
+export type Widget = WidgetSettings & {
+  id: string;
+  enabled: boolean;
+};
+
+export type WidgetOfType<T extends WidgetType> = Extract<Widget, { type: T }>;
+
 export interface DashboardConfig {
   appTitle?: string;
   appLogo?: IconConfig;
   categories: Category[];
   services: Service[];
+  widgets?: Widget[];
 }
 
 export interface ImportWarning {
