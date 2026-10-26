@@ -239,7 +239,7 @@ describe('config history actions', () => {
     await seedHistory();
     const revision = await getRevision();
 
-    for (const id of ['../config', 'config-2026-01-01T00-00-00-000Z-edit']) {
+    for (const id of ['../config', 'config-000999-2026-01-01T00-00-00-000Z-edit']) {
       const result = await restoreConfigSnapshot({ id, revision });
       expect(result).toMatchObject({ success: false, errors: [{ field: 'id', message: 'Snapshot not found' }] });
     }

@@ -67,7 +67,7 @@ describe('config snapshots', () => {
     await writeConfig(configWithTitle('after'), CONFIG_SNAPSHOT_REASONS.IMPORT);
 
     const [snapshot] = await listConfigSnapshots();
-    expect(snapshot?.id).toMatch(/^config-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-import$/);
+    expect(snapshot?.id).toMatch(/^config-000001-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-import$/);
     expect(snapshot?.reason).toBe(CONFIG_SNAPSHOT_REASONS.IMPORT);
   });
 
@@ -145,7 +145,7 @@ describe('config snapshots', () => {
   });
 
   it('ignores directories named like snapshots', async () => {
-    await mkdir(path.join(getBackupsDir(), 'config-2099-01-01T00-00-00-000Z-edit.json'), { recursive: true });
+    await mkdir(path.join(getBackupsDir(), 'config-999999-2026-10-11T14-02-12-345Z-edit.json'), { recursive: true });
     await seedConfig(configWithTitle('v0'));
 
     await writeConfig(configWithTitle('v1'));
@@ -157,45 +157,45 @@ describe('config snapshots', () => {
     ]);
   });
 
-  it('does not let a future-dated snapshot skew new timestamps', async () => {
-    const now = Date.parse('2026-10-11T14:02:12.345Z');
-    vi.spyOn(Date, 'now').mockReturnValue(now);
-    await mkdir(getBackupsDir(), { recursive: true });
-    await writeFile(path.join(getBackupsDir(), 'config-2099-01-01T00-00-00-000Z-edit.json'), serialize(configWithTitle('future')));
+  it('orders snapshots by write order when the clock moves backwards', async () => {
+    const clock = vi.spyOn(Date, 'now');
     await seedConfig(configWithTitle('v0'));
 
+    clock.mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'));
     await writeConfig(configWithTitle('v1'));
+    clock.mockReturnValue(Date.parse('2026-10-11T14:02:12.345Z'));
     await writeConfig(configWithTitle('v2'));
+    await writeConfig(configWithTitle('v3'));
 
     const snapshots = await listConfigSnapshots();
+    // Timestamps record the clock as it was; order follows the writes
     expect(snapshots.map((snapshot) => snapshot.createdAt)).toEqual([
-      '2099-01-01T00:00:00.000Z',
-      '2026-10-11T14:02:12.346Z',
       '2026-10-11T14:02:12.345Z',
+      '2026-10-11T14:02:12.345Z',
+      '2099-01-01T00:00:00.000Z',
     ]);
     await expect(readSnapshotRaws()).resolves.toEqual([
-      serialize(configWithTitle('future')),
+      serialize(configWithTitle('v2')),
       serialize(configWithTitle('v1')),
       serialize(configWithTitle('v0')),
     ]);
   });
 
-  it('keeps new snapshots when future-dated files fill the retention limit', async () => {
+  it('keeps the newest snapshots when the clock moves backwards', async () => {
     process.env[SNAPSHOT_LIMIT_ENV] = '2';
-    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-11T14:02:12.345Z'));
-    await mkdir(getBackupsDir(), { recursive: true });
-    for (const id of ['config-2099-01-01T00-00-00-000Z-edit', 'config-2099-01-02T00-00-00-000Z-edit']) {
-      await writeFile(path.join(getBackupsDir(), `${id}.json`), serialize(configWithTitle(id)));
-    }
+    const clock = vi.spyOn(Date, 'now');
     await seedConfig(configWithTitle('v0'));
 
+    clock.mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'));
     await writeConfig(configWithTitle('v1'));
     await writeConfig(configWithTitle('v2'));
+    clock.mockReturnValue(Date.parse('2026-10-11T14:02:12.345Z'));
+    await writeConfig(configWithTitle('v3'));
+    await writeConfig(configWithTitle('v4'));
 
-    // Future-dated files are pruned before snapshots taken at the current time
     await expect(readSnapshotRaws()).resolves.toEqual([
-      serialize(configWithTitle('v1')),
-      serialize(configWithTitle('v0')),
+      serialize(configWithTitle('v3')),
+      serialize(configWithTitle('v2')),
     ]);
   });
 
