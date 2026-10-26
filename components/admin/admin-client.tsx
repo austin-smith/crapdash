@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
-import { Plus, FolderOpen, Computer } from 'lucide-react';
+import { Plus, FolderOpen, Computer, LayoutDashboard } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -44,27 +44,69 @@ import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
 import { UploadIcon } from '@/components/ui/animated-icons/upload';
 import { importConfig } from '@/lib/actions';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
-import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig, type ServiceFormData } from '@/lib/types';
+import {
+  DEFAULT_APP_TITLE,
+  WIDGET_TYPES,
+  type Category,
+  type Service,
+  type Preferences,
+  type IconConfig,
+  type ServiceFormData,
+  type Widget,
+  type WidgetType,
+} from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
 import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
+import { WidgetFormModal } from '@/components/admin/widgets/widget-form-modal';
+import { WIDGET_TYPE_OPTIONS, getWidgetAdminDefinition } from '@/components/admin/widgets/registry';
 
 // Dynamic imports to avoid SSR for drag-and-drop components
 const CategoryList = dynamic(() => import('@/components/admin/categories/category-list').then(m => m.CategoryList), { ssr: false });
 const ServiceList = dynamic(() => import('@/components/admin/services/service-list').then(m => m.ServiceList), { ssr: false });
+const WidgetList = dynamic(() => import('@/components/admin/widgets/widget-list').then(m => m.WidgetList), { ssr: false });
 
 interface AdminClientProps {
   appTitle?: string;
   appLogo?: IconConfig;
   categories: Category[];
   services: Service[];
+  widgets: Widget[];
   initialSettings: Partial<Preferences>;
 }
 
-export function AdminClient({ appTitle, appLogo, categories: initialCategories, services: initialServices, initialSettings }: AdminClientProps) {
+function AddWidgetMenu({ onSelect }: { onSelect: (type: WidgetType) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4" />
+          Add Widget
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {WIDGET_TYPE_OPTIONS.map((type) => {
+          const { label, icon: Icon } = getWidgetAdminDefinition(type);
+          return (
+            <DropdownMenuItem key={type} onSelect={() => onSelect(type)}>
+              <Icon className="h-4 w-4" />
+              {label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function AdminClient({ appTitle, appLogo, categories: initialCategories, services: initialServices, widgets: initialWidgets, initialSettings }: AdminClientProps) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [services, setServices] = useState<Service[]>(initialServices);
+  const [widgets, setWidgets] = useState<Widget[]>(initialWidgets);
+  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+  const [widgetModalType, setWidgetModalType] = useState<WidgetType>(WIDGET_TYPES.CLOCK);
+  const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
   const [appTitleState, setAppTitleState] = useState<string>(appTitle ?? '');
   const [appLogoState, setAppLogoState] = useState<IconConfig | undefined>(appLogo);
   const { settings, updateSetting } = usePreferences({ initialSettings });
@@ -177,6 +219,26 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
     setServiceModalOpen(true);
   };
 
+  const handleAddWidget = (type: WidgetType) => {
+    setEditingWidget(undefined);
+    setWidgetModalType(type);
+    setWidgetModalOpen(true);
+  };
+
+  const handleEditWidget = (widget: Widget) => {
+    setEditingWidget(widget);
+    setWidgetModalType(widget.type);
+    setWidgetModalOpen(true);
+  };
+
+  const handleWidgetSaved = (saved: Widget) => {
+    setWidgets((current) => (
+      current.some((widget) => widget.id === saved.id)
+        ? current.map((widget) => (widget.id === saved.id ? saved : widget))
+        : [...current, saved]
+    ));
+  };
+
   const handleCategoryModalClose = (open: boolean) => {
     setCategoryModalOpen(open);
     if (!open) {
@@ -232,6 +294,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
 
       setCategories(result.data.config.categories);
       setServices(result.data.config.services);
+      setWidgets(result.data.config.widgets ?? []);
       setAppTitleState(result.data.config.appTitle ?? '');
       setAppLogoState(result.data.config.appLogo);
       setRefreshKey((value) => value + 1);
@@ -348,6 +411,32 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
             />
           </section>
 
+          {/* Widgets Section */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold font-mono">Widgets</h2>
+              {widgets.length > 0 && <AddWidgetMenu onSelect={handleAddWidget} />}
+            </div>
+            {widgets.length === 0 ? (
+              <Card className="shadow-xs">
+                <CardContent className="py-8">
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia>
+                        <LayoutDashboard className="size-10 text-primary" />
+                      </EmptyMedia>
+                      <EmptyTitle>No widgets configured</EmptyTitle>
+                      <EmptyDescription>Add a clock or weather widget to the top of your dashboard.</EmptyDescription>
+                    </EmptyHeader>
+                    <AddWidgetMenu onSelect={handleAddWidget} />
+                  </Empty>
+                </CardContent>
+              </Card>
+            ) : (
+              <WidgetList widgets={widgets} onWidgetsChange={setWidgets} onEdit={handleEditWidget} />
+            )}
+          </section>
+
           {/* Categories Section */}
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -460,12 +549,20 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
           onSuccess={handleRefresh}
           cacheKey={refreshKey}
         />
+        <WidgetFormModal
+          open={widgetModalOpen}
+          onOpenChange={setWidgetModalOpen}
+          type={widgetModalType}
+          widget={editingWidget}
+          onSaved={handleWidgetSaved}
+        />
         <ConfigEditorDialog
           open={configEditorOpen}
           onOpenChange={setConfigEditorOpen}
           onSaved={(config) => {
             setCategories(config.categories);
             setServices(config.services);
+            setWidgets(config.widgets ?? []);
             setAppTitleState(config.appTitle ?? '');
             setAppLogoState(config.appLogo);
             setRefreshKey((value) => value + 1);

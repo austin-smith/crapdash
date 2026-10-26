@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Computer } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -34,6 +34,8 @@ interface DashboardClientProps {
   categories: Category[];
   services: Service[];
   initialSettings: Partial<Preferences>;
+  /** Server-rendered widget strip, hidden while searching so results sit right under the header. */
+  widgets?: ReactNode;
 }
 
 function getActiveServiceId(
@@ -85,7 +87,7 @@ function getVisibleServiceItems(): SpatialItem[] {
   });
 }
 
-export function DashboardClient({ appTitle, appLogo, categories, services, initialSettings }: DashboardClientProps) {
+export function DashboardClient({ appTitle, appLogo, categories, services, initialSettings, widgets }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -347,6 +349,10 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+        {/* Hide rather than unmount while searching so widget timers (clock ticks, weather refresh) keep running. */}
+        {widgets && (
+          <div className="mb-8" hidden={searchResult.isSearching}>{widgets}</div>
+        )}
         {services.length === 0 ? (
           <Empty className="py-16">
             <EmptyHeader>

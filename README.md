@@ -22,6 +22,7 @@ Crapdash is a low-frills homepage to manage your links and services. Add names, 
 - **Categories**: Group services into categories with drag-and-drop organization
 - **Admin panel**: Manage services and categories through a simple UI
 - **Search**: Filter services quickly with keyboard shortcuts
+- **Widgets**: Optional clock and weather widgets at the top of the dashboard (weather uses the free [Open-Meteo](https://open-meteo.com) API and is only contacted when a weather widget is configured)
 - **Self-hosted**: Run it on your own hardware via Docker or Node.js
 
 ## Installation

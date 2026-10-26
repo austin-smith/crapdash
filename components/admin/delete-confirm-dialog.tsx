@@ -16,7 +16,7 @@ interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemName: string;
-  itemType: 'category' | 'service';
+  itemType: 'category' | 'service' | 'widget';
   onConfirm: () => Promise<void>;
   isDeleting: boolean;
   serviceCount?: number;

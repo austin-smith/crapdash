@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useId } from 'react';
+import React, { useCallback, useMemo, useState, useId } from 'react';
 import type { ReactNode, CSSProperties } from 'react';
 import {
   DndContext,
@@ -114,10 +114,18 @@ export function SortableItem({ id, children, className, style: styleProp }: Sort
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id });
+
+  // Registering the item itself as the activator makes the keyboard sensor ignore
+  // Space/Enter from nested controls (switches, buttons), so they keep working.
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    setActivatorNodeRef(node);
+  }, [setNodeRef, setActivatorNodeRef]);
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -127,7 +135,7 @@ export function SortableItem({ id, children, className, style: styleProp }: Sort
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       style={style}
       className={cn(
         'relative cursor-grab active:cursor-grabbing rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow',

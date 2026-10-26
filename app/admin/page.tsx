@@ -27,6 +27,7 @@ export default async function AdminPage() {
       appLogo={config.appLogo}
       categories={config.categories}
       services={config.services}
+      widgets={config.widgets ?? []}
       initialSettings={initialSettings}
     />
   );

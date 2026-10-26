@@ -8,6 +8,8 @@ import { collectConfigImportWarnings } from './config-import';
 import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
 import { fetchProvisionalServiceFavicon, fetchServiceFavicon } from './favicon';
 import { fetchServiceMetadata as fetchServiceMetadataForUrl, type ServiceMetadata } from './service-metadata';
+import { searchWeatherLocations as searchOpenMeteoLocations } from './weather';
+import { getAvailableWidgetId } from './widgets';
 import {
   appSettingsSchema,
   categorySchema,
@@ -16,6 +18,9 @@ import {
   serviceSchema,
   serviceCreateSchema,
   serviceIdSchema,
+  weatherLocationSearchSchema,
+  widgetSettingsSchema,
+  type WidgetSettingsInput,
 } from './validations';
 import {
   backupServiceIconFiles,
@@ -42,6 +47,8 @@ import {
   type IconConfig,
   type DashboardConfig,
   type ImportConfigResult,
+  type WeatherLocation,
+  type Widget,
 } from './types';
 
 const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
@@ -1024,6 +1031,193 @@ export async function reorderServices(categoryId: string, orderedIds: string[]):
     return {
       success: false,
       errors: [{ field: 'general', message: 'Failed to reorder services' }],
+    };
+  }
+}
+
+export async function createWidget(data: WidgetSettingsInput): Promise<ActionResult<Widget>> {
+  try {
+    const settings = widgetSettingsSchema.parse(data);
+    const config = await readConfig();
+    const widgets = config.widgets ?? [];
+
+    const widget: Widget = {
+      ...settings,
+      id: getAvailableWidgetId(settings.type, widgets),
+      enabled: true,
+    };
+
+    config.widgets = [...widgets, widget];
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: widget };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { success: false, errors: mapValidationIssues(error) };
+    }
+    console.error('Create widget error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to create widget' }],
+    };
+  }
+}
+
+export async function updateWidget(id: string, data: WidgetSettingsInput): Promise<ActionResult<Widget>> {
+  try {
+    const settings = widgetSettingsSchema.parse(data);
+    const config = await readConfig();
+    const widgets = config.widgets ?? [];
+
+    const index = widgets.findIndex((widget) => widget.id === id);
+    if (index === -1) {
+      return {
+        success: false,
+        errors: [{ field: 'general', message: 'Widget not found' }],
+      };
+    }
+
+    const existing = widgets[index];
+    if (existing.type !== settings.type) {
+      return {
+        success: false,
+        errors: [{ field: 'type', message: 'Widget type cannot be changed' }],
+      };
+    }
+
+    // Replace (not merge) settings so cleared optional fields are removed from the config.
+    const updated: Widget = { ...settings, id: existing.id, enabled: existing.enabled };
+    config.widgets = widgets.map((widget, widgetIndex) => (widgetIndex === index ? updated : widget));
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: updated };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { success: false, errors: mapValidationIssues(error) };
+    }
+    console.error('Update widget error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to update widget' }],
+    };
+  }
+}
+
+export async function deleteWidget(id: string): Promise<ActionResult<void>> {
+  try {
+    const config = await readConfig();
+    const widgets = config.widgets ?? [];
+
+    if (!widgets.some((widget) => widget.id === id)) {
+      return {
+        success: false,
+        errors: [{ field: 'general', message: 'Widget not found' }],
+      };
+    }
+
+    config.widgets = widgets.filter((widget) => widget.id !== id);
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error('Delete widget error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to delete widget' }],
+    };
+  }
+}
+
+export async function setWidgetEnabled(id: string, enabled: boolean): Promise<ActionResult<Widget>> {
+  try {
+    const config = await readConfig();
+    const widgets = config.widgets ?? [];
+
+    const existing = widgets.find((widget) => widget.id === id);
+    if (!existing) {
+      return {
+        success: false,
+        errors: [{ field: 'general', message: 'Widget not found' }],
+      };
+    }
+
+    const updated: Widget = { ...existing, enabled: enabled === true };
+    config.widgets = widgets.map((widget) => (widget.id === id ? updated : widget));
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error('Set widget enabled error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to update widget' }],
+    };
+  }
+}
+
+export async function reorderWidgets(orderedIds: string[]): Promise<ActionResult<void>> {
+  try {
+    const config = await readConfig();
+    const widgets = config.widgets ?? [];
+    const widgetMap = new Map(widgets.map((widget) => [widget.id, widget]));
+
+    const isPermutation =
+      Array.isArray(orderedIds) &&
+      orderedIds.length === widgets.length &&
+      new Set(orderedIds).size === orderedIds.length &&
+      orderedIds.every((id) => widgetMap.has(id));
+
+    if (!isPermutation) {
+      return {
+        success: false,
+        errors: [{ field: 'general', message: 'Widget order must include every widget exactly once' }],
+      };
+    }
+
+    config.widgets = orderedIds.map((id) => widgetMap.get(id)!);
+    await writeConfig(config);
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error('Reorder widgets error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to reorder widgets' }],
+    };
+  }
+}
+
+export async function searchWeatherLocations(query: string): Promise<ActionResult<WeatherLocation[]>> {
+  try {
+    const validatedQuery = weatherLocationSearchSchema.parse(query);
+    const locations = await searchOpenMeteoLocations(validatedQuery);
+    return { success: true, data: locations };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        errors: error.issues.map((issue) => ({ field: 'query', message: issue.message })),
+      };
+    }
+    console.error('Weather location search error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'query', message: 'Location search is unavailable right now. Enter coordinates instead.' }],
     };
   }
 }
