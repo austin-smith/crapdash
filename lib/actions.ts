@@ -13,7 +13,8 @@ import {
   categorySchema,
   categoryCreateSchema,
   dashboardConfigImportSchema,
-  searchSettingsSchema,
+  searchBangsSchema,
+  searchEngineSettingsSchema,
   serviceSchema,
   serviceCreateSchema,
   serviceIdSchema,
@@ -32,6 +33,7 @@ import {
 } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
 import {
+  DEFAULT_SEARCH_ENGINE,
   ICON_TYPES,
   type Category,
   type Service,
@@ -43,6 +45,8 @@ import {
   type IconConfig,
   type DashboardConfig,
   type ImportConfigResult,
+  type SearchBang,
+  type SearchEngineSettings,
   type SearchSettings,
 } from './types';
 
@@ -613,32 +617,58 @@ export async function updateAppSettings(data: AppSettingsInput): Promise<ActionR
   }
 }
 
-export async function updateSearchSettings(data: SearchSettings): Promise<ActionResult<SearchSettings>> {
+async function saveSearchSettings(
+  buildSearch: (current: SearchSettings | undefined) => SearchSettings
+): Promise<SearchSettings> {
+  const { categories, services, ...settings } = await readConfig();
+  const search = buildSearch(settings.search);
+
+  // Keep settings above the category and service lists in config.json
+  await writeConfig({ ...settings, search, categories, services });
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+
+  return search;
+}
+
+export async function updateSearchSettings(data: SearchEngineSettings): Promise<ActionResult<SearchSettings>> {
   try {
-    const validated = searchSettingsSchema.parse(data);
-    const { categories, services, ...settings } = await readConfig();
+    const validated = searchEngineSettingsSchema.parse(data);
+    const search = await saveSearchSettings((current) => (
+      current?.bangs ? { ...validated, bangs: current.bangs } : validated
+    ));
 
-    // Keep settings above the category and service lists in config.json
-    await writeConfig({ ...settings, search: validated, categories, services });
-
-    revalidatePath('/');
-    revalidatePath('/admin');
-
-    return { success: true, data: validated };
+    return { success: true, data: search };
   } catch (error) {
     if (error instanceof ZodError) {
-      return {
-        success: false,
-        errors: error.issues.map((issue) => ({
-          field: issue.path.join('.'),
-          message: issue.message,
-        })),
-      };
+      return { success: false, errors: mapValidationIssues(error) };
     }
     console.error('Update search settings error:', error);
     return {
       success: false,
       errors: [{ field: 'general', message: 'Failed to update search settings' }],
+    };
+  }
+}
+
+export async function updateSearchBangs(data: SearchBang[]): Promise<ActionResult<SearchSettings>> {
+  try {
+    const bangs = searchBangsSchema.parse(data);
+    const search = await saveSearchSettings((current) => ({
+      ...(current ?? { engine: DEFAULT_SEARCH_ENGINE }),
+      bangs,
+    }));
+
+    return { success: true, data: search };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { success: false, errors: mapValidationIssues(error) };
+    }
+    console.error('Update search bangs error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to update bangs' }],
     };
   }
 }

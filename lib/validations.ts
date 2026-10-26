@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import {
   ICON_TYPES,
+  SEARCH_BANG_PREFIX,
   SEARCH_ENGINES,
   SEARCH_QUERY_PLACEHOLDER,
   SERVICE_DESCRIPTION_MAX_LENGTH,
   SERVICE_NAME_MAX_LENGTH,
+  type SearchEngine,
 } from './types';
 import { resolveLucideIconName } from './lucide-icons';
 
@@ -110,21 +112,71 @@ const searchUrlTemplateSchema = z
     `Must include ${SEARCH_QUERY_PLACEHOLDER} where the search query goes`
   );
 
-export const searchSettingsSchema = z
+const SEARCH_BANG_TRIGGER_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
+
+export const searchBangSchema = z
   .object({
-    engine: z.enum(SEARCH_ENGINES, { message: 'Choose a search engine' }),
-    customUrl: searchUrlTemplateSchema.optional(),
+    trigger: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(1, { message: 'Trigger is required', abort: true })
+      .max(20, 'Trigger must be 20 characters or fewer')
+      .regex(SEARCH_BANG_TRIGGER_PATTERN, 'Use letters, numbers, dots, dashes, or underscores'),
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Name is required')
+      .max(50, 'Name must be 50 characters or fewer'),
+    url: searchUrlTemplateSchema,
   })
-  .strict()
-  .superRefine((settings, ctx) => {
-    if (settings.engine === SEARCH_ENGINES.CUSTOM && !settings.customUrl) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Custom search URL is required',
-        path: ['customUrl'],
-      });
-    }
+  .strict();
+
+export const searchBangsSchema = z
+  .array(searchBangSchema)
+  .max(100, 'Use 100 bangs or fewer')
+  .superRefine((bangs, ctx) => {
+    const seenTriggers = new Set<string>();
+
+    bangs.forEach((bang, index) => {
+      if (seenTriggers.has(bang.trigger)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `${SEARCH_BANG_PREFIX}${bang.trigger} is already used`,
+          path: [index, 'trigger'],
+        });
+      }
+      seenTriggers.add(bang.trigger);
+    });
   });
+
+const searchEngineShape = {
+  engine: z.enum(SEARCH_ENGINES, { message: 'Choose a search engine' }),
+  customUrl: searchUrlTemplateSchema.optional(),
+};
+
+function requireCustomSearchUrl(
+  settings: { engine: SearchEngine; customUrl?: string },
+  ctx: z.RefinementCtx
+) {
+  if (settings.engine === SEARCH_ENGINES.CUSTOM && !settings.customUrl) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Custom search URL is required',
+      path: ['customUrl'],
+    });
+  }
+}
+
+export const searchEngineSettingsSchema = z
+  .object(searchEngineShape)
+  .strict()
+  .superRefine(requireCustomSearchUrl);
+
+export const searchSettingsSchema = z
+  .object({ ...searchEngineShape, bangs: searchBangsSchema.optional() })
+  .strict()
+  .superRefine(requireCustomSearchUrl);
 
 const importAppTitleSchema = z.preprocess(
   (value) => (value === null ? undefined : value),

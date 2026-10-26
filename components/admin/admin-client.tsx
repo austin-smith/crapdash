@@ -46,6 +46,7 @@ import { importConfig } from '@/lib/actions';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
 import { DEFAULT_APP_TITLE, type Category, type Service, type Preferences, type IconConfig, type SearchSettings, type ServiceFormData } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
+import { SearchBangsCard } from '@/components/admin/search-settings/search-bangs-card';
 import { SearchSettingsCard } from '@/components/admin/search-settings/search-settings-card';
 import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
@@ -357,10 +358,16 @@ export function AdminClient({ appTitle, appLogo, search, categories: initialCate
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold font-mono">Search</h2>
             </div>
-            <SearchSettingsCard
-              search={searchSettingsState}
-              onChange={setSearchSettingsState}
-            />
+            <div className="flex flex-col gap-4">
+              <SearchSettingsCard
+                search={searchSettingsState}
+                onChange={setSearchSettingsState}
+              />
+              <SearchBangsCard
+                search={searchSettingsState}
+                onChange={setSearchSettingsState}
+              />
+            </div>
           </section>
 
           {/* Categories Section */}

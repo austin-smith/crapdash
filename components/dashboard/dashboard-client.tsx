@@ -26,8 +26,8 @@ import { DASHBOARD_SERVICE_ID_ATTRIBUTE, getDashboardServiceElementId } from '@/
 import { getDashboardSearchResult } from '@/lib/dashboard-search';
 import { openLink } from '@/lib/link-target';
 import { getNextSpatialItemId, type SpatialDirection, type SpatialItem } from '@/lib/spatial-navigation';
-import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig } from '@/lib/types';
-import { buildSearchUrl, getSearchEnterUrl, type WebSearchTarget } from '@/lib/web-search';
+import { DEFAULT_APP_TITLE, LAYOUTS, type Category, type Service, type Preferences, type IconConfig, type SearchBang } from '@/lib/types';
+import { buildSearchUrl, getBangSearch, getSearchEnterUrl, type WebSearchTarget } from '@/lib/web-search';
 import { CategoryLayout } from './category-layout';
 import { WebSearchRow } from './web-search-row';
 
@@ -37,6 +37,7 @@ interface DashboardClientProps {
   categories: Category[];
   services: Service[];
   webSearch: WebSearchTarget | null;
+  bangs: SearchBang[];
   initialSettings: Partial<Preferences>;
 }
 
@@ -101,7 +102,7 @@ function getVisibleServiceItems(): SpatialItem[] {
   });
 }
 
-export function DashboardClient({ appTitle, appLogo, categories, services, webSearch, initialSettings }: DashboardClientProps) {
+export function DashboardClient({ appTitle, appLogo, categories, services, webSearch, bangs, initialSettings }: DashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -163,9 +164,14 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
   }, [activeServiceId, searchResult]);
 
   const webSearchUrl = getWebSearchUrl(webSearch, searchResult, searchQuery);
+  const bangSearch = useMemo(() => getBangSearch(searchQuery, bangs), [bangs, searchQuery]);
 
   let searchAssistiveText: string | undefined;
-  if (searchResult.isSearching) {
+  if (bangSearch) {
+    searchAssistiveText = bangSearch.query
+      ? `Press Enter to search ${bangSearch.name}.`
+      : `Press Enter to open ${bangSearch.name}.`;
+  } else if (searchResult.isSearching) {
     if (activeService) {
       searchAssistiveText = `${activeService.name} selected. Press Enter to open.`;
       if (webSearch) {
@@ -226,6 +232,15 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       return;
     }
 
+    const currentBangSearch = getBangSearch(currentQuery, bangs);
+    if (currentBangSearch) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        openLink(currentBangSearch.url, settings.openLinksInNewTab);
+      }
+      return;
+    }
+
     const currentSearchResult = getDashboardSearchResult({
       categories,
       services,
@@ -261,7 +276,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       event.preventDefault();
       openLink(url, settings.openLinksInNewTab);
     }
-  }, [categories, moveServiceSelection, services, settings.openLinksInNewTab, updateSelectedServiceId, webSearch]);
+  }, [bangs, categories, moveServiceSelection, services, settings.openLinksInNewTab, updateSelectedServiceId, webSearch]);
 
   const handleServiceNavigationKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -380,7 +395,18 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        {services.length === 0 && !webSearchUrl ? (
+        {bangSearch ? (
+          <div className="mx-auto max-w-xl py-12">
+            <WebSearchRow
+              engineName={bangSearch.name}
+              query={bangSearch.query}
+              url={bangSearch.url}
+              bangTrigger={bangSearch.trigger}
+              isSelected
+              openInNewTab={settings.openLinksInNewTab}
+            />
+          </div>
+        ) : services.length === 0 && !webSearchUrl ? (
           <Empty className="py-16">
             <EmptyHeader>
               <EmptyMedia>

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ICON_TYPES, SEARCH_ENGINES } from '@/lib/types';
-import { dashboardConfigImportSchema, searchSettingsSchema } from '@/lib/validations';
+import {
+  dashboardConfigImportSchema,
+  searchBangsSchema,
+  searchEngineSettingsSchema,
+  searchSettingsSchema,
+} from '@/lib/validations';
 
 describe('dashboard config import validation', () => {
   it('defaults imported services to active', () => {
@@ -184,6 +189,83 @@ describe('search settings validation', () => {
     if (result.success) return;
     expect(result.error.issues).toEqual([
       expect.objectContaining({ path: ['search', 'customUrl'] }),
+    ]);
+  });
+});
+
+describe('search bang validation', () => {
+  const github = { trigger: 'gh', name: 'GitHub', url: 'https://github.com/search?q=%s' };
+
+  it('trims bangs and lowercases triggers', () => {
+    expect(searchBangsSchema.parse([
+      { trigger: ' GH ', name: ' GitHub ', url: ' https://github.com/search?q=%s ' },
+    ])).toEqual([github]);
+  });
+
+  it.each([
+    ['', 'Trigger is required'],
+    ['!gh', 'Use letters, numbers, dots, dashes, or underscores'],
+    ['g h', 'Use letters, numbers, dots, dashes, or underscores'],
+    ['-gh', 'Use letters, numbers, dots, dashes, or underscores'],
+    ['a'.repeat(21), 'Trigger must be 20 characters or fewer'],
+  ])('rejects the trigger %j', (trigger, message) => {
+    const result = searchBangsSchema.safeParse([{ ...github, trigger }]);
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ message, path: [0, 'trigger'] }),
+    ]);
+  });
+
+  it('rejects bang URLs that are not http(s) templates', () => {
+    const result = searchBangsSchema.safeParse([{ ...github, url: 'javascript:alert(%s)' }]);
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ message: 'Must be a valid http or https URL', path: [0, 'url'] }),
+    ]);
+  });
+
+  it('rejects duplicate triggers regardless of case', () => {
+    const result = searchBangsSchema.safeParse([github, { ...github, trigger: 'GH', name: 'Gist' }]);
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ message: '!gh is already used', path: [1, 'trigger'] }),
+    ]);
+  });
+
+  it('accepts search settings with and without bangs', () => {
+    expect(searchSettingsSchema.parse({ engine: SEARCH_ENGINES.NONE, bangs: [] })).toEqual({
+      engine: SEARCH_ENGINES.NONE,
+      bangs: [],
+    });
+    expect(dashboardConfigImportSchema.parse({
+      search: { engine: SEARCH_ENGINES.GOOGLE, bangs: [github] },
+      categories: [],
+      services: [],
+    }).search).toEqual({ engine: SEARCH_ENGINES.GOOGLE, bangs: [github] });
+  });
+
+  it('rejects bangs in engine-only updates', () => {
+    expect(searchEngineSettingsSchema.safeParse({ engine: SEARCH_ENGINES.GOOGLE, bangs: [] }).success)
+      .toBe(false);
+  });
+
+  it('reports bang errors with their config path on import', () => {
+    const result = dashboardConfigImportSchema.safeParse({
+      search: { engine: SEARCH_ENGINES.GOOGLE, bangs: [{ ...github, name: '' }] },
+      categories: [],
+      services: [],
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toEqual([
+      expect.objectContaining({ path: ['search', 'bangs', 0, 'name'] }),
     ]);
   });
 });

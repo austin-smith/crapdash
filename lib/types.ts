@@ -40,6 +40,7 @@ export type SearchEngine = typeof SEARCH_ENGINES[keyof typeof SEARCH_ENGINES];
 
 export const DEFAULT_SEARCH_ENGINE: SearchEngine = SEARCH_ENGINES.DUCKDUCKGO;
 export const SEARCH_QUERY_PLACEHOLDER = '%s';
+export const SEARCH_BANG_PREFIX = '!';
 
 export const ICON_TYPES = {
   IMAGE: 'image',
@@ -70,10 +71,21 @@ export interface Service {
   active: boolean;
 }
 
+export interface SearchBang {
+  /** Typed after "!" in the search box, stored without it (e.g. "gh") */
+  trigger: string;
+  name: string;
+  url: string;
+}
+
 export interface SearchSettings {
   engine: SearchEngine;
   customUrl?: string;
+  /** Omitted means the default bangs; an empty list turns bangs off */
+  bangs?: SearchBang[];
 }
+
+export type SearchEngineSettings = Omit<SearchSettings, 'bangs'>;
 
 export interface DashboardConfig {
   appTitle?: string;

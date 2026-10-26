@@ -38,15 +38,15 @@ export function SearchSettingsCard({ search, onChange }: SearchSettingsCardProps
   const [customUrl, setCustomUrl] = useState(savedCustomUrl);
   const [customUrlError, setCustomUrlError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [prevSearch, setPrevSearch] = useState(search);
+  const [prevSaved, setPrevSaved] = useState({ engine: savedEngine, customUrl: savedCustomUrl });
   const engineId = useId();
   const customUrlId = useId();
 
-  // Sync local state when the saved settings change (e.g. after a config import)
-  if (search !== prevSearch) {
-    setPrevSearch(search);
-    setEngine(search?.engine ?? DEFAULT_SEARCH_ENGINE);
-    setCustomUrl(search?.customUrl ?? '');
+  // Sync local state when the saved engine changes (e.g. after a config import)
+  if (savedEngine !== prevSaved.engine || savedCustomUrl !== prevSaved.customUrl) {
+    setPrevSaved({ engine: savedEngine, customUrl: savedCustomUrl });
+    setEngine(savedEngine);
+    setCustomUrl(savedCustomUrl);
     setCustomUrlError(null);
   }
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { SEARCH_ENGINES } from '@/lib/types';
-import { buildSearchUrl, getSearchEnterUrl, getWebSearchTarget } from '@/lib/web-search';
+import {
+  DEFAULT_SEARCH_BANGS,
+  buildSearchUrl,
+  getBangSearch,
+  getSearchBangs,
+  getSearchEnterUrl,
+  getWebSearchTarget,
+} from '@/lib/web-search';
 
 describe('getWebSearchTarget', () => {
   it('defaults to DuckDuckGo when search is not configured', () => {
@@ -77,5 +84,60 @@ describe('getSearchEnterUrl', () => {
       .toBe('http://nas.local:8096');
     expect(getSearchEnterUrl({ activeService: null, webSearchUrl: null, preferWebSearch: false }))
       .toBeNull();
+  });
+});
+
+describe('getSearchBangs', () => {
+  it('uses the default bangs when none are configured', () => {
+    expect(getSearchBangs(undefined)).toBe(DEFAULT_SEARCH_BANGS);
+    expect(getSearchBangs({ engine: SEARCH_ENGINES.GOOGLE })).toBe(DEFAULT_SEARCH_BANGS);
+  });
+
+  it('respects an empty bang list', () => {
+    expect(getSearchBangs({ engine: SEARCH_ENGINES.GOOGLE, bangs: [] })).toEqual([]);
+  });
+});
+
+describe('getBangSearch', () => {
+  const bangs = [
+    { trigger: 'gh', name: 'GitHub', url: 'https://github.com/search?q=%s' },
+    { trigger: 'w', name: 'Wikipedia', url: 'https://en.wikipedia.org/w/index.php?search=%s' },
+  ];
+
+  it('searches the matching bang with the rest of the query', () => {
+    expect(getBangSearch('!gh react hooks', bangs)).toEqual({
+      trigger: 'gh',
+      name: 'GitHub',
+      query: 'react hooks',
+      url: 'https://github.com/search?q=react%20hooks',
+    });
+  });
+
+  it('matches triggers case-insensitively and ignores surrounding whitespace', () => {
+    expect(getBangSearch('  !GH   react  ', bangs)?.url).toBe('https://github.com/search?q=react');
+  });
+
+  it('opens the site when the bang has no query', () => {
+    expect(getBangSearch('!w', bangs)).toEqual({
+      trigger: 'w',
+      name: 'Wikipedia',
+      query: '',
+      url: 'https://en.wikipedia.org',
+    });
+    expect(getBangSearch('!gh ', bangs)?.url).toBe('https://github.com');
+  });
+
+  it.each([
+    'react !gh',
+    '!ghreact',
+    '!x react',
+    '!',
+    'gh react',
+  ])('ignores %j', (input) => {
+    expect(getBangSearch(input, bangs)).toBeNull();
+  });
+
+  it('does nothing when bangs are off', () => {
+    expect(getBangSearch('!gh react', [])).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import {
   createService,
   deleteService,
   updateAppSettings,
+  updateSearchBangs,
   updateSearchSettings,
   updateService,
   uploadAppLogo,
@@ -587,5 +588,70 @@ describe('search settings actions', () => {
     });
     const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
     expect(saved.search).toEqual({ engine: SEARCH_ENGINES.GOOGLE });
+  });
+
+  it('keeps saved bangs when the engine changes', async () => {
+    const bangs = [{ trigger: 'gh', name: 'GitHub', url: 'https://github.com/search?q=%s' }];
+    await writeConfig({
+      search: { engine: SEARCH_ENGINES.GOOGLE, bangs },
+      categories: [],
+      services: [],
+    });
+
+    const result = await updateSearchSettings({ engine: SEARCH_ENGINES.KAGI });
+
+    expect(result).toEqual({ success: true, data: { engine: SEARCH_ENGINES.KAGI, bangs } });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(saved.search).toEqual({ engine: SEARCH_ENGINES.KAGI, bangs });
+  });
+
+  it('saves normalized bangs and keeps the engine', async () => {
+    await writeConfig({
+      search: { engine: SEARCH_ENGINES.CUSTOM, customUrl: 'https://searx.local/search?q=%s' },
+      categories: [],
+      services: [],
+    });
+
+    const result = await updateSearchBangs([
+      { trigger: ' GH ', name: ' GitHub ', url: ' https://github.com/search?q=%s ' },
+    ]);
+
+    const search = {
+      engine: SEARCH_ENGINES.CUSTOM,
+      customUrl: 'https://searx.local/search?q=%s',
+      bangs: [{ trigger: 'gh', name: 'GitHub', url: 'https://github.com/search?q=%s' }],
+    };
+    expect(result).toEqual({ success: true, data: search });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(saved.search).toEqual(search);
+  });
+
+  it('adds a default engine when saving bangs into a config without search settings', async () => {
+    await writeConfig({ appTitle: 'Home', categories: [], services: [] });
+
+    const result = await updateSearchBangs([]);
+
+    expect(result).toEqual({ success: true, data: { engine: SEARCH_ENGINES.DUCKDUCKGO, bangs: [] } });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(Object.keys(saved)).toEqual(['appTitle', 'search', 'categories', 'services']);
+  });
+
+  it('returns indexed field errors without writing invalid bangs', async () => {
+    await writeConfig({ categories: [], services: [] });
+
+    const result = await updateSearchBangs([
+      { trigger: 'gh', name: 'GitHub', url: 'https://github.com/search?q=%s' },
+      { trigger: 'GH', name: '', url: 'https://github.com/' },
+    ]);
+
+    expect(result).toEqual({
+      success: false,
+      errors: expect.arrayContaining([
+        { field: '1.name', message: 'Name is required' },
+        { field: '1.url', message: 'Must include %s where the search query goes' },
+      ]),
+    });
+    const saved = JSON.parse(await readFile(getConfigPath(), 'utf-8'));
+    expect(saved.search).toBeUndefined();
   });
 });

@@ -1,17 +1,19 @@
 import { CornerDownLeft, Search } from 'lucide-react';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { getLinkTargetProps } from '@/lib/link-target';
+import { SEARCH_BANG_PREFIX } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface WebSearchRowProps {
   engineName: string;
   query: string;
   url: string;
+  bangTrigger?: string;
   isSelected: boolean;
   openInNewTab: boolean;
 }
 
-export function WebSearchRow({ engineName, query, url, isSelected, openInNewTab }: WebSearchRowProps) {
+export function WebSearchRow({ engineName, query, url, bangTrigger, isSelected, openInNewTab }: WebSearchRowProps) {
   return (
     <a
       href={url}
@@ -24,9 +26,19 @@ export function WebSearchRow({ engineName, query, url, isSelected, openInNewTab 
           : 'border-dashed text-muted-foreground'
       )}
     >
-      <Search className="size-4 shrink-0" aria-hidden="true" />
+      {bangTrigger ? (
+        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground" aria-hidden="true">
+          {SEARCH_BANG_PREFIX}{bangTrigger}
+        </span>
+      ) : (
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+      )}
       <span className="min-w-0 flex-1 truncate">
-        Search {engineName} for <span className="font-medium text-foreground">“{query}”</span>
+        {query ? (
+          <>Search {engineName} for <span className="font-medium text-foreground">“{query}”</span></>
+        ) : (
+          <>Open <span className="font-medium text-foreground">{engineName}</span></>
+        )}
       </span>
       <KbdGroup className="hidden sm:inline-flex" aria-hidden="true">
         {!isSelected && <Kbd className="bg-accent border h-6 px-2 text-xs">Shift</Kbd>}
