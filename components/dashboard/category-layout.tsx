@@ -17,6 +17,7 @@ interface CategoryLayoutProps {
   cacheKey?: number;
   searchTokens?: string[];
   selectedServiceId?: string | null;
+  hostMatchServiceIds?: ReadonlySet<string>;
 }
 
 export function CategoryLayout({
@@ -30,6 +31,7 @@ export function CategoryLayout({
   cacheKey,
   searchTokens = [],
   selectedServiceId,
+  hostMatchServiceIds,
 }: CategoryLayoutProps) {
   if (services.length === 0) {
     return null;
@@ -69,6 +71,7 @@ export function CategoryLayout({
               cacheKey={cacheKey}
               searchTokens={searchTokens}
               isKeyboardSelected={service.id === selectedServiceId}
+              revealUrl={hostMatchServiceIds?.has(service.id)}
               domId={getDashboardServiceElementId(service.id)}
               onFocus={onFocusService}
             />

@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { ServiceIcon } from '@/components/common/icons/service-icon';
 import { HighlightedText } from '@/components/common/highlighted-text';
 import { DASHBOARD_SERVICE_ID_ATTRIBUTE } from '@/lib/dashboard-dom';
+import { getUrlHostParts } from '@/lib/dashboard-search';
 import { cn } from '@/lib/utils';
 import type { Service } from '@/lib/types';
 
@@ -14,6 +15,7 @@ interface ServiceCardProps {
   cacheKey?: number;
   searchTokens?: string[];
   isKeyboardSelected?: boolean;
+  revealUrl?: boolean;
   domId?: string;
   onFocus?: (service: Service) => void;
 }
@@ -24,11 +26,13 @@ export function ServiceCard({
   cacheKey,
   searchTokens = [],
   isKeyboardSelected = false,
+  revealUrl = false,
   domId,
   onFocus,
 }: ServiceCardProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined);
+  const urlHostParts = getUrlHostParts(service.url);
 
   const onEnter = useCallback(() => {
     if (!expandOnHover) return;
@@ -79,10 +83,23 @@ export function ServiceCard({
               </div>
             </div>
           </div>
-          <div className="grid grid-rows-[0fr] group-data-[expanded]:grid-rows-[1fr] group-data-[state=open]/context:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+          <div
+            className={cn(
+              'grid grid-rows-[0fr] group-data-[expanded]:grid-rows-[1fr] group-data-[state=open]/context:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out',
+              revealUrl && 'grid-rows-[1fr]'
+            )}
+          >
             <div className="overflow-hidden min-h-0">
               <div className="mt-2 max-w-full rounded-md bg-muted/70 px-2 py-1 text-[11px] font-mono text-muted-foreground shadow-sm break-words leading-snug">
-                {service.url}
+                {urlHostParts ? (
+                  <>
+                    {urlHostParts.beforeHost}
+                    <HighlightedText text={urlHostParts.host} tokens={searchTokens} />
+                    {urlHostParts.afterHost}
+                  </>
+                ) : (
+                  service.url
+                )}
               </div>
             </div>
           </div>
