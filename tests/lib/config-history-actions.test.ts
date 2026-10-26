@@ -9,11 +9,12 @@ import {
   restoreConfigSnapshot,
   saveConfigJson,
 } from '@/lib/actions';
-import { listConfigSnapshots } from '@/lib/config-snapshots';
+import { SNAPSHOT_LIMIT_ENV, listConfigSnapshots } from '@/lib/config-snapshots';
 import { writeConfig } from '@/lib/db';
 import { getBackupsDir, getConfigPath } from '@/lib/paths';
 import {
   CONFIG_SNAPSHOT_REASONS,
+  CONFIG_SNAPSHOT_RESULTS,
   CONFIG_SNAPSHOT_STATUSES,
   ICON_TYPES,
   WIDGET_TYPES,
@@ -71,6 +72,8 @@ describe('config history actions', () => {
   });
 
   afterEach(async () => {
+    delete process.env[SNAPSHOT_LIMIT_ENV];
+    await chmod(getBackupsDir(), 0o755).catch(() => {});
     await removeTestDataDir(rootDir);
   });
 
@@ -143,6 +146,7 @@ describe('config history actions', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.data.config).toEqual(originalConfig);
+    expect(result.data.snapshotResult).toBe(CONFIG_SNAPSHOT_RESULTS.SAVED);
     expect(result.data.revision).toBe(await getRevision());
     await expect(readSavedConfig()).resolves.toEqual(originalConfig);
 
@@ -153,6 +157,36 @@ describe('config history actions', () => {
 
     expect(undo.success).toBe(true);
     await expect(readSavedConfig()).resolves.toEqual(replacementConfig);
+  });
+
+  it('reports an unchanged config when restoring a snapshot identical to it', async () => {
+    const snapshotId = await seedHistory();
+    await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
+
+    const result = await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
+
+    expect(result).toMatchObject({ success: true, data: { snapshotResult: CONFIG_SNAPSHOT_RESULTS.UNCHANGED } });
+  });
+
+  it('reports when snapshots are disabled so the restore cannot be undone', async () => {
+    const snapshotId = await seedHistory();
+    process.env[SNAPSHOT_LIMIT_ENV] = '0';
+
+    const result = await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
+
+    expect(result).toMatchObject({ success: true, data: { snapshotResult: CONFIG_SNAPSHOT_RESULTS.DISABLED } });
+    await expect(readSavedConfig()).resolves.toEqual(originalConfig);
+    expect(await listConfigSnapshots()).toHaveLength(1);
+  });
+
+  it('reports when the replaced config could not be saved but still restores', async () => {
+    const snapshotId = await seedHistory();
+    await chmod(getBackupsDir(), 0o500);
+
+    const result = await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
+
+    expect(result).toMatchObject({ success: true, data: { snapshotResult: CONFIG_SNAPSHOT_RESULTS.FAILED } });
+    await expect(readSavedConfig()).resolves.toEqual(originalConfig);
   });
 
   it('warns but restores when a snapshot references a deleted icon', async () => {

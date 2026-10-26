@@ -153,6 +153,19 @@ export const CONFIG_SNAPSHOT_REASONS = {
 
 export type ConfigSnapshotReason = typeof CONFIG_SNAPSHOT_REASONS[keyof typeof CONFIG_SNAPSHOT_REASONS];
 
+export const CONFIG_SNAPSHOT_RESULTS = {
+  /** The replaced config is in history (newly saved, or already the latest snapshot). */
+  SAVED: 'saved',
+  /** Nothing was replaced: the content didn't change or there was no config file yet. */
+  UNCHANGED: 'unchanged',
+  /** Snapshots are turned off with CRAPDASH_SNAPSHOT_LIMIT=0. */
+  DISABLED: 'disabled',
+  /** Saving the snapshot failed; the write went ahead without one. */
+  FAILED: 'failed',
+} as const;
+
+export type ConfigSnapshotResult = typeof CONFIG_SNAPSHOT_RESULTS[keyof typeof CONFIG_SNAPSHOT_RESULTS];
+
 export interface ConfigSnapshotInfo {
   id: string;
   createdAt: string;

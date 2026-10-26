@@ -6,8 +6,10 @@ import { dashboardConfigImportSchema } from './validations';
 import { getConfigLockPath, getConfigPath } from './paths';
 import {
   CONFIG_SNAPSHOT_REASONS,
+  CONFIG_SNAPSHOT_RESULTS,
   type Category,
   type ConfigSnapshotReason,
+  type ConfigSnapshotResult,
   type Service,
   type DashboardConfig,
   type IconConfig,
@@ -83,22 +85,28 @@ async function snapshotConfigBeforeWrite(
   nextRaw: string,
   reason: ConfigSnapshotReason,
   currentRaw?: string
-): Promise<void> {
+): Promise<ConfigSnapshotResult> {
   try {
     const previousRaw = currentRaw ?? await readRawConfigFile();
-    if (previousRaw === null) return;
+    if (previousRaw === null) return CONFIG_SNAPSHOT_RESULTS.UNCHANGED;
 
-    await createConfigSnapshot(previousRaw, nextRaw, reason);
+    return await createConfigSnapshot(previousRaw, nextRaw, reason);
   } catch (error) {
     // A failed snapshot must never block the write itself.
     console.error('Error creating config snapshot:', error);
+    return CONFIG_SNAPSHOT_RESULTS.FAILED;
   }
 }
 
 /** Snapshots the current config, then replaces it. Callers must hold the config lock. */
-async function replaceRawConfig(nextRaw: string, reason: ConfigSnapshotReason, currentRaw?: string): Promise<void> {
-  await snapshotConfigBeforeWrite(nextRaw, reason, currentRaw);
+async function replaceRawConfig(
+  nextRaw: string,
+  reason: ConfigSnapshotReason,
+  currentRaw?: string
+): Promise<ConfigSnapshotResult> {
+  const snapshotResult = await snapshotConfigBeforeWrite(nextRaw, reason, currentRaw);
   await writeRawConfigAtomic(nextRaw);
+  return snapshotResult;
 }
 
 async function parseConfig(raw: string): Promise<DashboardConfig> {
@@ -196,21 +204,21 @@ export async function readRawConfig(): Promise<string> {
   return loadExistingRawConfig();
 }
 
+/** Returns null when the revision doesn't match; otherwise what happened to the snapshot of the replaced config. */
 export async function writeRawConfigIfRevisionMatches(
   raw: string,
   expectedRevision: string | undefined,
   reason: ConfigSnapshotReason
-): Promise<boolean> {
+): Promise<ConfigSnapshotResult | null> {
   try {
     return await withConfigLock(async () => {
       const currentRaw = await loadExistingRawConfig();
 
       if (expectedRevision && getConfigRevision(currentRaw) !== expectedRevision) {
-        return false;
+        return null;
       }
 
-      await replaceRawConfig(raw, reason, currentRaw);
-      return true;
+      return replaceRawConfig(raw, reason, currentRaw);
     });
   } catch (error) {
     console.error('Error writing raw config:', error);

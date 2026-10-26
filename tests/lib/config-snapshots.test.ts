@@ -11,7 +11,7 @@ import {
 } from '@/lib/config-snapshots';
 import { writeConfig, writeRawConfigIfRevisionMatches } from '@/lib/db';
 import { getBackupsDir, getConfigPath } from '@/lib/paths';
-import { CONFIG_SNAPSHOT_REASONS, type DashboardConfig } from '@/lib/types';
+import { CONFIG_SNAPSHOT_REASONS, CONFIG_SNAPSHOT_RESULTS, type DashboardConfig } from '@/lib/types';
 import { createTestDataDir, removeTestDataDir } from './test-data-dir';
 
 let rootDir: string;
@@ -234,12 +234,12 @@ describe('config snapshots', () => {
 
     await expect(
       writeRawConfigIfRevisionMatches(serialize(configWithTitle('stale')), 'stale-revision', CONFIG_SNAPSHOT_REASONS.EDITOR)
-    ).resolves.toBe(false);
+    ).resolves.toBeNull();
     await expect(listConfigSnapshots()).resolves.toEqual([]);
 
     await expect(
       writeRawConfigIfRevisionMatches(serialize(configWithTitle('after')), revision, CONFIG_SNAPSHOT_REASONS.EDITOR)
-    ).resolves.toBe(true);
+    ).resolves.toBe(CONFIG_SNAPSHOT_RESULTS.SAVED);
 
     const snapshots = await listConfigSnapshots();
     expect(snapshots.map((snapshot) => snapshot.reason)).toEqual([CONFIG_SNAPSHOT_REASONS.EDITOR]);

@@ -56,6 +56,7 @@ import {
   type ConfigHistory,
   type ConfigHistoryEntry,
   type ConfigSnapshot,
+  type ConfigSnapshotResult,
 } from './types';
 
 const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
@@ -83,6 +84,8 @@ interface RestoreConfigSnapshotInput {
 
 type RestoreConfigSnapshotResult = ImportConfigResult & {
   revision: string;
+  /** Whether the replaced config was saved to history, so the restore can be undone. */
+  snapshotResult: ConfigSnapshotResult;
 };
 
 async function getPromotedServiceIcon(
@@ -676,9 +679,9 @@ export async function restoreConfigSnapshot(
     if (!result.success) return result;
 
     const nextRaw = JSON.stringify(result.data.config, null, 2);
-    const wrote = await writeRawConfigIfRevisionMatches(nextRaw, input.revision, CONFIG_SNAPSHOT_REASONS.RESTORE);
+    const snapshotResult = await writeRawConfigIfRevisionMatches(nextRaw, input.revision, CONFIG_SNAPSHOT_REASONS.RESTORE);
 
-    if (!wrote) {
+    if (!snapshotResult) {
       return {
         success: false,
         errors: [{
@@ -696,6 +699,7 @@ export async function restoreConfigSnapshot(
       data: {
         ...result.data,
         revision: getConfigRevision(nextRaw),
+        snapshotResult,
       },
     };
   } catch (error) {

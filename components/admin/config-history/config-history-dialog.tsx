@@ -34,10 +34,12 @@ import { formatConfigChangeSummary } from '@/lib/config-diff';
 import { cn } from '@/lib/utils';
 import {
   CONFIG_SNAPSHOT_REASONS,
+  CONFIG_SNAPSHOT_RESULTS,
   CONFIG_SNAPSHOT_STATUSES,
   type ConfigHistory,
   type ConfigHistoryEntry,
   type ConfigSnapshotReason,
+  type ConfigSnapshotResult,
   type DashboardConfig,
   type ValidationError,
 } from '@/lib/types';
@@ -60,6 +62,23 @@ const timestampFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'medium',
 });
+
+function showRestoredToast(snapshotResult: ConfigSnapshotResult) {
+  switch (snapshotResult) {
+    case CONFIG_SNAPSHOT_RESULTS.SAVED:
+      toast.success('Snapshot restored. The replaced config was saved to history.');
+      return;
+    case CONFIG_SNAPSHOT_RESULTS.UNCHANGED:
+      toast.success('Snapshot restored.');
+      return;
+    case CONFIG_SNAPSHOT_RESULTS.DISABLED:
+      toast.warning('Snapshot restored. Snapshots are disabled, so the replaced config was not saved.');
+      return;
+    case CONFIG_SNAPSHOT_RESULTS.FAILED:
+      toast.warning('Snapshot restored, but the replaced config could not be saved to history.');
+      return;
+  }
+}
 
 function getSummaryText(entry: ConfigHistoryEntry): string {
   if (entry.status === CONFIG_SNAPSHOT_STATUSES.UNREADABLE) return 'Unreadable file, can’t be restored';
@@ -156,7 +175,7 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
 
       setErrors([]);
       onRestored(result.data.config);
-      toast.success('Snapshot restored. The replaced config was saved to history.');
+      showRestoredToast(result.data.snapshotResult);
 
       const warningCount = result.data.warnings.length;
       if (warningCount > 0) {
@@ -175,6 +194,7 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
   const snapshots = history?.snapshots ?? [];
   const previewRaw = preview && preview.id === selectedId ? preview.raw : '';
   const canRestore = selectedEntry?.status === CONFIG_SNAPSHOT_STATUSES.VALID && !isPending;
+  const snapshotsDisabled = history?.limit === 0;
 
   return (
     <>
@@ -191,7 +211,7 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
                 <span className="font-mono text-xs font-normal text-muted-foreground">data/backups</span>
               </DialogTitle>
               <DialogDescription>
-                {history?.limit === 0
+                {snapshotsDisabled
                   ? 'Snapshots are disabled (CRAPDASH_SNAPSHOT_LIMIT=0).'
                   : `A snapshot is saved before each config change. The ${history?.limit ?? ''} most recent are kept. Changes are relative to the current config.`}
               </DialogDescription>
@@ -296,8 +316,10 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
           <AlertDialogHeader>
             <AlertDialogTitle>Restore snapshot</AlertDialogTitle>
             <AlertDialogDescription>
-              This replaces the current configuration with the selected snapshot. The current
-              configuration is saved to history first, so you can undo this.
+              This replaces the current configuration with the selected snapshot.{' '}
+              {snapshotsDisabled
+                ? 'Snapshots are disabled (CRAPDASH_SNAPSHOT_LIMIT=0), so the current configuration will not be saved and this cannot be undone.'
+                : 'The current configuration is saved to history first, so you can undo this.'}
               {selectedEntry && (
                 <span className="mt-2 block font-mono text-xs text-foreground/80">
                   {REASON_LABELS[selectedEntry.reason]} · {timestampFormatter.format(new Date(selectedEntry.createdAt))}

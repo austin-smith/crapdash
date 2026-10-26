@@ -4,9 +4,11 @@ import path from 'path';
 import { getBackupsDir } from './paths';
 import {
   CONFIG_SNAPSHOT_REASONS,
+  CONFIG_SNAPSHOT_RESULTS,
   type ConfigSnapshot,
   type ConfigSnapshotInfo,
   type ConfigSnapshotReason,
+  type ConfigSnapshotResult,
 } from './types';
 
 export const SNAPSHOT_LIMIT_ENV = 'CRAPDASH_SNAPSHOT_LIMIT';
@@ -149,9 +151,10 @@ export async function createConfigSnapshot(
   previousRaw: string,
   nextRaw: string,
   reason: ConfigSnapshotReason
-): Promise<ConfigSnapshotInfo | null> {
+): Promise<ConfigSnapshotResult> {
   const limit = getSnapshotLimit();
-  if (limit === 0 || previousRaw === nextRaw) return null;
+  if (limit === 0) return CONFIG_SNAPSHOT_RESULTS.DISABLED;
+  if (previousRaw === nextRaw) return CONFIG_SNAPSHOT_RESULTS.UNCHANGED;
 
   await fs.mkdir(getBackupsDir(), { recursive: true });
 
@@ -164,7 +167,7 @@ export async function createConfigSnapshot(
   // The latest snapshot already holds this content, e.g. when the write after it failed.
   if (latest && (await isSnapshotContent(latest.id, previousRaw))) {
     await pruneConfigSnapshots(ranked, limit);
-    return null;
+    return CONFIG_SNAPSHOT_RESULTS.SAVED;
   }
 
   // Keep ids unique and ordered even when writes land in the same millisecond.
@@ -177,5 +180,5 @@ export async function createConfigSnapshot(
   // Always keep the snapshot for this write, even if it lands just past the ordering window.
   await pruneConfigSnapshots([created, ...ranked], limit);
 
-  return created;
+  return CONFIG_SNAPSHOT_RESULTS.SAVED;
 }
