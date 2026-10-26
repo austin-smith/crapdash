@@ -29,7 +29,8 @@ export function WidgetFormModal({ open, onOpenChange, type, widget, onSaved }: W
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      {/* Weather search results can make this taller than short viewports, so let it scroll. */}
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{widget ? `Edit ${definition.label} Widget` : `Add ${definition.label} Widget`}</DialogTitle>
           <DialogDescription>{definition.description}</DialogDescription>
