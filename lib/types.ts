@@ -142,3 +142,57 @@ export interface ValidationError {
 export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; errors: ValidationError[] };
+
+export const CONFIG_SNAPSHOT_REASONS = {
+  EDIT: 'edit',
+  REORDER: 'reorder',
+  IMPORT: 'import',
+  EDITOR: 'editor',
+  RESTORE: 'restore',
+} as const;
+
+export type ConfigSnapshotReason = typeof CONFIG_SNAPSHOT_REASONS[keyof typeof CONFIG_SNAPSHOT_REASONS];
+
+export interface ConfigSnapshotInfo {
+  id: string;
+  createdAt: string;
+  reason: ConfigSnapshotReason;
+}
+
+export interface ConfigSnapshot extends ConfigSnapshotInfo {
+  raw: string;
+}
+
+export interface ConfigCollectionChanges {
+  added: number;
+  removed: number;
+  changed: number;
+}
+
+export interface ConfigChangeSummary {
+  categories: ConfigCollectionChanges;
+  services: ConfigCollectionChanges;
+  widgets: ConfigCollectionChanges;
+  appSettingsChanged: boolean;
+  reordered: boolean;
+}
+
+export const CONFIG_SNAPSHOT_STATUSES = {
+  VALID: 'valid',
+  INVALID: 'invalid',
+  UNREADABLE: 'unreadable',
+} as const;
+
+export type ConfigSnapshotStatus = typeof CONFIG_SNAPSHOT_STATUSES[keyof typeof CONFIG_SNAPSHOT_STATUSES];
+
+export interface ConfigHistoryEntry extends ConfigSnapshotInfo {
+  status: ConfigSnapshotStatus;
+  /** Changes restoring this snapshot would make to the current config; null if either side can't be parsed. */
+  summary: ConfigChangeSummary | null;
+}
+
+export interface ConfigHistory {
+  revision: string;
+  limit: number;
+  snapshots: ConfigHistoryEntry[];
+}

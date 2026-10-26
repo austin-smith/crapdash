@@ -1,9 +1,17 @@
 import { createHash, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createConfigSnapshot } from './config-snapshots';
 import { dashboardConfigImportSchema } from './validations';
 import { getConfigLockPath, getConfigPath } from './paths';
-import type { Category, Service, DashboardConfig, IconConfig } from './types';
+import {
+  CONFIG_SNAPSHOT_REASONS,
+  type Category,
+  type ConfigSnapshotReason,
+  type Service,
+  type DashboardConfig,
+  type IconConfig,
+} from './types';
 
 const CONFIG_LOCK_TIMEOUT_MS = 5_000;
 const CONFIG_LOCK_RETRY_MS = 50;
@@ -69,6 +77,28 @@ async function loadExistingRawConfig(): Promise<string> {
 
   await writeRawConfigAtomic(DEFAULT_CONFIG_RAW);
   return DEFAULT_CONFIG_RAW;
+}
+
+async function snapshotConfigBeforeWrite(
+  nextRaw: string,
+  reason: ConfigSnapshotReason,
+  currentRaw?: string
+): Promise<void> {
+  try {
+    const previousRaw = currentRaw ?? await readRawConfigFile();
+    if (previousRaw === null) return;
+
+    await createConfigSnapshot(previousRaw, nextRaw, reason);
+  } catch (error) {
+    // A failed snapshot must never block the write itself.
+    console.error('Error creating config snapshot:', error);
+  }
+}
+
+/** Snapshots the current config, then replaces it. Callers must hold the config lock. */
+async function replaceRawConfig(nextRaw: string, reason: ConfigSnapshotReason, currentRaw?: string): Promise<void> {
+  await snapshotConfigBeforeWrite(nextRaw, reason, currentRaw);
+  await writeRawConfigAtomic(nextRaw);
 }
 
 async function parseConfig(raw: string): Promise<DashboardConfig> {
@@ -148,10 +178,13 @@ export async function readConfigOrDefault(): Promise<DashboardConfig> {
   }
 }
 
-export async function writeConfig(config: DashboardConfig): Promise<void> {
+export async function writeConfig(
+  config: DashboardConfig,
+  reason: ConfigSnapshotReason = CONFIG_SNAPSHOT_REASONS.EDIT
+): Promise<void> {
   try {
     await withConfigLock(async () => {
-      await writeRawConfigAtomic(JSON.stringify(config, null, 2));
+      await replaceRawConfig(JSON.stringify(config, null, 2), reason);
     });
   } catch (error) {
     console.error('Error writing config:', error);
@@ -163,7 +196,11 @@ export async function readRawConfig(): Promise<string> {
   return loadExistingRawConfig();
 }
 
-export async function writeRawConfigIfRevisionMatches(raw: string, expectedRevision?: string): Promise<boolean> {
+export async function writeRawConfigIfRevisionMatches(
+  raw: string,
+  expectedRevision: string | undefined,
+  reason: ConfigSnapshotReason
+): Promise<boolean> {
   try {
     return await withConfigLock(async () => {
       const currentRaw = await loadExistingRawConfig();
@@ -172,7 +209,7 @@ export async function writeRawConfigIfRevisionMatches(raw: string, expectedRevis
         return false;
       }
 
-      await writeRawConfigAtomic(raw);
+      await replaceRawConfig(raw, reason, currentRaw);
       return true;
     });
   } catch (error) {

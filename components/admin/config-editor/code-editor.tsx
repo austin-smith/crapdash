@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   readOnly?: boolean;
   className?: string;
 }
@@ -146,7 +146,7 @@ export function CodeEditor({ value, onChange, readOnly = false, className }: Cod
           ]),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              onChangeRef.current(update.state.doc.toString());
+              onChangeRef.current?.(update.state.doc.toString());
             }
           }),
           keymap.of([

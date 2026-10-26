@@ -41,6 +41,7 @@ import { ServiceFormModal } from '@/components/admin/services/service-form-modal
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { DownloadIcon } from '@/components/ui/animated-icons/download';
 import { FilePenLineIcon } from '@/components/ui/animated-icons/file-pen-line';
+import { HistoryIcon } from '@/components/ui/animated-icons/history';
 import { UploadIcon } from '@/components/ui/animated-icons/upload';
 import { importConfig } from '@/lib/actions';
 import { createServiceDuplicateDraft } from '@/lib/service-duplicate';
@@ -48,6 +49,7 @@ import {
   DEFAULT_APP_TITLE,
   WIDGET_TYPES,
   type Category,
+  type DashboardConfig,
   type Service,
   type Preferences,
   type IconConfig,
@@ -57,6 +59,7 @@ import {
 } from '@/lib/types';
 import { AppSettingsCard } from '@/components/admin/app-settings/app-settings-card';
 import { ConfigEditorDialog } from '@/components/admin/config-editor/config-editor-dialog';
+import { ConfigHistoryDialog } from '@/components/admin/config-history/config-history-dialog';
 import { PageFooter } from '@/components/layout/footer/page-footer';
 import { WidgetFormModal } from '@/components/admin/widgets/widget-form-modal';
 import { WIDGET_TYPE_OPTIONS, getWidgetAdminDefinition } from '@/components/admin/widgets/registry';
@@ -125,6 +128,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
+  const [configHistoryOpen, setConfigHistoryOpen] = useState(false);
   const adminTitle = `${(appTitleState?.trim() || DEFAULT_APP_TITLE)} /admin`;
 
   useKeyboardShortcuts([
@@ -189,6 +193,16 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
   const handleRefresh = () => {
     fetchData();
     setRefreshKey(k => k + 1);
+  };
+
+  const applyReplacedConfig = (config: DashboardConfig) => {
+    setCategories(config.categories);
+    setServices(config.services);
+    setWidgets(config.widgets ?? []);
+    setAppTitleState(config.appTitle ?? '');
+    setAppLogoState(config.appLogo);
+    setRefreshKey((value) => value + 1);
+    router.refresh();
   };
 
   const handleAddCategory = () => {
@@ -292,12 +306,6 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
         return;
       }
 
-      setCategories(result.data.config.categories);
-      setServices(result.data.config.services);
-      setWidgets(result.data.config.widgets ?? []);
-      setAppTitleState(result.data.config.appTitle ?? '');
-      setAppLogoState(result.data.config.appLogo);
-      setRefreshKey((value) => value + 1);
       setPendingImportFile(null);
       setImportConfirmOpen(false);
 
@@ -313,7 +321,7 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
         );
       }
 
-      router.refresh();
+      applyReplacedConfig(result.data.config);
     } catch (error) {
       console.error('Import config client error:', error);
       toast.error('Failed to import configuration');
@@ -348,6 +356,12 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
               <DropdownMenuItem onSelect={openImportPicker} disabled={isImporting}>
                 <UploadIcon size={14} />
                 Import config
+              </DropdownMenuItem>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuItem onSelect={() => setConfigHistoryOpen(true)}>
+                <HistoryIcon size={14} />
+                History
               </DropdownMenuItem>
             </AnimateIcon>
             <AnimateIcon animateOnHover asChild>
@@ -559,15 +573,12 @@ export function AdminClient({ appTitle, appLogo, categories: initialCategories, 
         <ConfigEditorDialog
           open={configEditorOpen}
           onOpenChange={setConfigEditorOpen}
-          onSaved={(config) => {
-            setCategories(config.categories);
-            setServices(config.services);
-            setWidgets(config.widgets ?? []);
-            setAppTitleState(config.appTitle ?? '');
-            setAppLogoState(config.appLogo);
-            setRefreshKey((value) => value + 1);
-            router.refresh();
-          }}
+          onSaved={applyReplacedConfig}
+        />
+        <ConfigHistoryDialog
+          open={configHistoryOpen}
+          onOpenChange={setConfigHistoryOpen}
+          onRestored={applyReplacedConfig}
         />
       </main>
       </AppearanceProvider>
