@@ -6,7 +6,7 @@ import { ZodError } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { diffConfigs } from './config-diff';
 import { collectConfigImportWarnings } from './config-import';
-import { getSnapshotLimit, listConfigSnapshots, readConfigSnapshot } from './config-snapshots';
+import { listConfigSnapshots, readConfigSnapshot } from './config-snapshots';
 import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
 import { fetchProvisionalServiceFavicon, fetchServiceFavicon } from './favicon';
 import { fetchServiceMetadata as fetchServiceMetadataForUrl, type ServiceMetadata } from './service-metadata';
@@ -628,7 +628,6 @@ export async function getConfigHistory(): Promise<ActionResult<ConfigHistory>> {
       success: true,
       data: {
         revision: getConfigRevision(raw),
-        limit: getSnapshotLimit(),
         snapshots: entries.filter((entry): entry is ConfigHistoryEntry => entry !== null),
       },
     };

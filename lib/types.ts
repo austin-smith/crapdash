@@ -158,8 +158,6 @@ export const CONFIG_SNAPSHOT_RESULTS = {
   SAVED: 'saved',
   /** Nothing was replaced: the content didn't change or there was no config file yet. */
   UNCHANGED: 'unchanged',
-  /** Snapshots are turned off with CRAPDASH_SNAPSHOT_LIMIT=0. */
-  DISABLED: 'disabled',
   /** Saving the snapshot failed; the write went ahead without one. */
   FAILED: 'failed',
 } as const;
@@ -206,6 +204,5 @@ export interface ConfigHistoryEntry extends ConfigSnapshotInfo {
 
 export interface ConfigHistory {
   revision: string;
-  limit: number;
   snapshots: ConfigHistoryEntry[];
 }

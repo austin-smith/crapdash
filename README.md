@@ -71,7 +71,7 @@ Consider using a process manager (e.g., pm2, systemd, launchd, NSSM) and a rever
 
 Before each config change, crapdash saves a copy of the previous `config.json` to `data/backups/`. Open **History** from the config menu in `/admin` to preview a snapshot and restore it. Restoring also saves a snapshot first, so you can undo it.
 
-The 20 most recent snapshots are kept by default. Set `CRAPDASH_SNAPSHOT_LIMIT` to change this, or `0` to turn snapshots off. Snapshots don't include uploaded icons, so a restored service or logo whose image was since deleted shows a placeholder until you upload a new one.
+The 20 most recent snapshots are kept, plus one per hour for the last day and one per day for the last 30 days. Snapshots don't include uploaded icons, so a restored service or logo whose image was since deleted shows a placeholder until you upload a new one.
 
 ## Stack
 

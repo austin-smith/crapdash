@@ -9,7 +9,7 @@ import {
   restoreConfigSnapshot,
   saveConfigJson,
 } from '@/lib/actions';
-import { SNAPSHOT_LIMIT_ENV, listConfigSnapshots } from '@/lib/config-snapshots';
+import { listConfigSnapshots } from '@/lib/config-snapshots';
 import { writeConfig } from '@/lib/db';
 import { getBackupsDir, getConfigPath } from '@/lib/paths';
 import {
@@ -72,7 +72,6 @@ describe('config history actions', () => {
   });
 
   afterEach(async () => {
-    delete process.env[SNAPSHOT_LIMIT_ENV];
     await chmod(getBackupsDir(), 0o755).catch(() => {});
     await removeTestDataDir(rootDir);
   });
@@ -84,7 +83,6 @@ describe('config history actions', () => {
 
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.data.limit).toBe(20);
     expect(result.data.snapshots).toEqual([{
       id: snapshotId,
       createdAt: expect.any(String),
@@ -166,17 +164,6 @@ describe('config history actions', () => {
     const result = await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
 
     expect(result).toMatchObject({ success: true, data: { snapshotResult: CONFIG_SNAPSHOT_RESULTS.UNCHANGED } });
-  });
-
-  it('reports when snapshots are disabled so the restore cannot be undone', async () => {
-    const snapshotId = await seedHistory();
-    process.env[SNAPSHOT_LIMIT_ENV] = '0';
-
-    const result = await restoreConfigSnapshot({ id: snapshotId, revision: await getRevision() });
-
-    expect(result).toMatchObject({ success: true, data: { snapshotResult: CONFIG_SNAPSHOT_RESULTS.DISABLED } });
-    await expect(readSavedConfig()).resolves.toEqual(originalConfig);
-    expect(await listConfigSnapshots()).toHaveLength(1);
   });
 
   it('reports when the replaced config could not be saved but still restores', async () => {

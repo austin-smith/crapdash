@@ -11,8 +11,13 @@ import {
   type ConfigSnapshotResult,
 } from './types';
 
-export const SNAPSHOT_LIMIT_ENV = 'CRAPDASH_SNAPSHOT_LIMIT';
-export const DEFAULT_SNAPSHOT_LIMIT = 20;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+// Retention: the newest snapshots, then one per hour for a day and one per day for a month.
+const RECENT_SNAPSHOT_COUNT = 20;
+const HOURLY_RETENTION_MS = DAY_MS;
+const DAILY_RETENTION_MS = 30 * DAY_MS;
 
 const SNAPSHOT_EXTENSION = '.json';
 const SNAPSHOT_SEQUENCE_DIGITS = 6;
@@ -30,18 +35,6 @@ interface SnapshotEntry extends ConfigSnapshotInfo {
 
 function isMissingFileError(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT';
-}
-
-export function getSnapshotLimit(): number {
-  const value = process.env[SNAPSHOT_LIMIT_ENV]?.trim();
-  if (!value) return DEFAULT_SNAPSHOT_LIMIT;
-
-  if (!/^\d+$/.test(value)) {
-    console.warn(`Ignoring invalid ${SNAPSHOT_LIMIT_ENV} value "${value}"; using ${DEFAULT_SNAPSHOT_LIMIT}.`);
-    return DEFAULT_SNAPSHOT_LIMIT;
-  }
-
-  return Number(value);
 }
 
 function getSnapshotId(sequence: number, createdAt: number, reason: ConfigSnapshotReason): string {
@@ -123,10 +116,40 @@ async function writeSnapshotFile(id: string, raw: string): Promise<void> {
   }
 }
 
-/** Deletes snapshots beyond the limit. Expects snapshots newest first. */
-async function pruneConfigSnapshots(snapshots: SnapshotEntry[], limit: number): Promise<void> {
+/** Returns the hour or day a snapshot represents, or null once it's past retention. */
+function getRetentionPeriod(snapshot: SnapshotEntry, now: number): string | null {
+  const createdAt = Date.parse(snapshot.createdAt);
+  const age = now - createdAt;
+
+  if (age <= HOURLY_RETENTION_MS) return `hour:${Math.floor(createdAt / HOUR_MS)}`;
+  if (age <= DAILY_RETENTION_MS) return `day:${Math.floor(createdAt / DAY_MS)}`;
+  return null;
+}
+
+/**
+ * Keeps the newest snapshots, plus the earliest snapshot of each hour in the last day and
+ * each day in the last month: the config as it was before that period's changes.
+ * Expects snapshots newest first.
+ */
+function getExpiredSnapshots(snapshots: SnapshotEntry[], now: number): SnapshotEntry[] {
+  const keep = new Set(snapshots.slice(0, RECENT_SNAPSHOT_COUNT).map((snapshot) => snapshot.id));
+  const keptPeriods = new Set<string>();
+
+  for (const snapshot of [...snapshots].reverse()) {
+    const period = getRetentionPeriod(snapshot, now);
+    if (period && !keptPeriods.has(period)) {
+      keptPeriods.add(period);
+      keep.add(snapshot.id);
+    }
+  }
+
+  return snapshots.filter((snapshot) => !keep.has(snapshot.id));
+}
+
+/** Deletes snapshots that fall outside retention. Expects snapshots newest first. */
+async function pruneConfigSnapshots(snapshots: SnapshotEntry[], now: number): Promise<void> {
   await Promise.all(
-    snapshots.slice(limit).map(async (snapshot) => {
+    getExpiredSnapshots(snapshots, now).map(async (snapshot) => {
       await fs.unlink(getSnapshotPath(snapshot.id)).catch((error) => {
         if (!isMissingFileError(error)) throw error;
       });
@@ -145,34 +168,33 @@ async function isSnapshotContent(id: string, raw: string): Promise<boolean> {
 }
 
 /**
- * Saves the config that is about to be replaced and prunes snapshots beyond the
- * retention limit. Callers must hold the config lock.
+ * Saves the config that is about to be replaced and prunes snapshots outside retention.
+ * Callers must hold the config lock.
  */
 export async function createConfigSnapshot(
   previousRaw: string,
   nextRaw: string,
   reason: ConfigSnapshotReason
 ): Promise<ConfigSnapshotResult> {
-  const limit = getSnapshotLimit();
-  if (limit === 0) return CONFIG_SNAPSHOT_RESULTS.DISABLED;
   if (previousRaw === nextRaw) return CONFIG_SNAPSHOT_RESULTS.UNCHANGED;
 
   await fs.mkdir(getBackupsDir(), { recursive: true });
 
+  const now = Date.now();
   const existing = await listSnapshotEntries();
   const latest = existing[0];
 
   // The latest snapshot already holds this content, e.g. when the write after it failed.
   if (latest && (await isSnapshotContent(latest.id, previousRaw))) {
-    await pruneConfigSnapshots(existing, limit);
+    await pruneConfigSnapshots(existing, now);
     return CONFIG_SNAPSHOT_RESULTS.SAVED;
   }
 
   // The lock serializes writes, so the next sequence is unique and always the newest.
-  const id = getSnapshotId((latest?.sequence ?? 0) + 1, Date.now(), reason);
+  const id = getSnapshotId((latest?.sequence ?? 0) + 1, now, reason);
   await writeSnapshotFile(id, previousRaw);
 
-  await pruneConfigSnapshots([parseSnapshotId(id)!, ...existing], limit);
+  await pruneConfigSnapshots([parseSnapshotId(id)!, ...existing], now);
 
   return CONFIG_SNAPSHOT_RESULTS.SAVED;
 }

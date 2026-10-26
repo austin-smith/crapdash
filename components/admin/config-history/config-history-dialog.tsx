@@ -75,9 +75,6 @@ function showRestoredToast(snapshotResult: ConfigSnapshotResult) {
     case CONFIG_SNAPSHOT_RESULTS.UNCHANGED:
       toast.success('Snapshot restored.');
       return;
-    case CONFIG_SNAPSHOT_RESULTS.DISABLED:
-      toast.warning('Snapshot restored. Snapshots are disabled, so the replaced config was not saved.');
-      return;
     case CONFIG_SNAPSHOT_RESULTS.FAILED:
       toast.warning('Snapshot restored, but the replaced config could not be saved to history.');
       return;
@@ -198,7 +195,6 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
   const snapshots = history?.snapshots ?? [];
   const previewRaw = preview && preview.id === selectedId ? preview.raw : '';
   const canRestore = selectedEntry?.status === CONFIG_SNAPSHOT_STATUSES.VALID && !isPending;
-  const snapshotsDisabled = history?.limit === 0;
 
   return (
     <>
@@ -215,9 +211,8 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
                 <span className="font-mono text-xs font-normal text-muted-foreground">data/backups</span>
               </DialogTitle>
               <DialogDescription>
-                {snapshotsDisabled
-                  ? 'Snapshots are disabled (CRAPDASH_SNAPSHOT_LIMIT=0).'
-                  : `A snapshot is saved before each config change. The ${history?.limit ?? ''} most recent are kept. Changes are relative to the current config.`}
+                A snapshot is saved before each config change. The 20 most recent are kept, plus one per hour
+                for the last day and one per day for the last 30 days. Changes are relative to the current config.
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -318,10 +313,8 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
           <AlertDialogHeader>
             <AlertDialogTitle>Restore snapshot</AlertDialogTitle>
             <AlertDialogDescription>
-              This replaces the current configuration with the selected snapshot.{' '}
-              {snapshotsDisabled
-                ? 'Snapshots are disabled (CRAPDASH_SNAPSHOT_LIMIT=0), so the current configuration will not be saved and this cannot be undone.'
-                : 'The current configuration is saved to history first, so you can undo this.'}
+              This replaces the current configuration with the selected snapshot. The current
+              configuration is saved to history first, so you can undo this.
               {selectedEntry && (
                 <span className="mt-2 block text-xs text-foreground/80">
                   {getEntryDetail(selectedEntry)}

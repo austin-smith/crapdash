@@ -2,13 +2,7 @@ import { createHash } from 'crypto';
 import { chmod, mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_SNAPSHOT_LIMIT,
-  SNAPSHOT_LIMIT_ENV,
-  getSnapshotLimit,
-  listConfigSnapshots,
-  readConfigSnapshot,
-} from '@/lib/config-snapshots';
+import { listConfigSnapshots, readConfigSnapshot } from '@/lib/config-snapshots';
 import { writeConfig, writeRawConfigIfRevisionMatches } from '@/lib/db';
 import { getBackupsDir, getConfigPath } from '@/lib/paths';
 import { CONFIG_SNAPSHOT_REASONS, CONFIG_SNAPSHOT_RESULTS, type DashboardConfig } from '@/lib/types';
@@ -45,7 +39,6 @@ describe('config snapshots', () => {
   });
 
   afterEach(async () => {
-    delete process.env[SNAPSHOT_LIMIT_ENV];
     await removeTestDataDir(rootDir);
   });
 
@@ -97,18 +90,53 @@ describe('config snapshots', () => {
     await expect(readSnapshotRaws()).resolves.toEqual([serialize(configWithTitle('a'))]);
   });
 
-  it('prunes snapshots beyond the retention limit, keeping the newest', async () => {
-    process.env[SNAPSHOT_LIMIT_ENV] = '3';
+  it('keeps the 20 most recent snapshots regardless of age', async () => {
+    const clock = vi.spyOn(Date, 'now');
     await seedConfig(configWithTitle('v0'));
 
-    for (let version = 1; version <= 5; version += 1) {
+    clock.mockReturnValue(Date.parse('2026-01-01T12:00:00.000Z'));
+    for (let version = 1; version <= 24; version += 1) {
       await writeConfig(configWithTitle(`v${version}`));
     }
+    clock.mockReturnValue(Date.parse('2026-06-01T12:00:00.000Z'));
+    await writeConfig(configWithTitle('v25'));
 
-    await expect(readSnapshotRaws()).resolves.toEqual([
-      serialize(configWithTitle('v4')),
-      serialize(configWithTitle('v3')),
-      serialize(configWithTitle('v2')),
+    const expected = Array.from({ length: 20 }, (_, index) => serialize(configWithTitle(`v${24 - index}`)));
+    await expect(readSnapshotRaws()).resolves.toEqual(expected);
+  });
+
+  it('keeps one snapshot per hour for the last day and one per day for the last 30 days', async () => {
+    const clock = vi.spyOn(Date, 'now');
+    await seedConfig(configWithTitle('v0'));
+    let version = 0;
+    const writeAt = async (time: string) => {
+      clock.mockReturnValue(Date.parse(time));
+      version += 1;
+      await writeConfig(configWithTitle(`v${version}`));
+    };
+
+    // Older than 30 days: expires
+    await writeAt('2026-09-01T12:00:00.000Z');
+    // 10 days ago: only the earliest of the day is kept
+    await writeAt('2026-10-01T10:00:00.000Z');
+    await writeAt('2026-10-01T10:20:00.000Z');
+    await writeAt('2026-10-01T15:00:00.000Z');
+    // Earlier today: only the earliest of each hour is kept
+    await writeAt('2026-10-11T09:10:00.000Z');
+    await writeAt('2026-10-11T09:20:00.000Z');
+    await writeAt('2026-10-11T09:30:00.000Z');
+    await writeAt('2026-10-11T11:10:00.000Z');
+    await writeAt('2026-10-11T11:40:00.000Z');
+    for (let index = 0; index < 20; index += 1) {
+      await writeAt('2026-10-11T14:30:00.000Z');
+    }
+
+    const snapshots = await listConfigSnapshots();
+    expect(snapshots).toHaveLength(23);
+    expect(snapshots.slice(20).map((snapshot) => snapshot.createdAt)).toEqual([
+      '2026-10-11T11:10:00.000Z',
+      '2026-10-11T09:10:00.000Z',
+      '2026-10-01T10:00:00.000Z',
     ]);
   });
 
@@ -181,40 +209,22 @@ describe('config snapshots', () => {
     ]);
   });
 
-  it('keeps the newest snapshots when the clock moves backwards', async () => {
-    process.env[SNAPSHOT_LIMIT_ENV] = '2';
+  it('keeps the newest snapshot when the clock moves backwards', async () => {
     const clock = vi.spyOn(Date, 'now');
     await seedConfig(configWithTitle('v0'));
 
     clock.mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'));
-    await writeConfig(configWithTitle('v1'));
-    await writeConfig(configWithTitle('v2'));
+    for (let version = 1; version <= 21; version += 1) {
+      await writeConfig(configWithTitle(`v${version}`));
+    }
     clock.mockReturnValue(Date.parse('2026-10-11T14:02:12.345Z'));
-    await writeConfig(configWithTitle('v3'));
-    await writeConfig(configWithTitle('v4'));
+    await writeConfig(configWithTitle('v22'));
 
-    await expect(readSnapshotRaws()).resolves.toEqual([
-      serialize(configWithTitle('v3')),
-      serialize(configWithTitle('v2')),
-    ]);
-  });
-
-  it('creates no snapshots when the limit is 0 and keeps existing ones', async () => {
-    await seedConfig(configWithTitle('v0'));
-    await writeConfig(configWithTitle('v1'));
-
-    process.env[SNAPSHOT_LIMIT_ENV] = '0';
-    await writeConfig(configWithTitle('v2'));
-
-    await expect(readSnapshotRaws()).resolves.toEqual([serialize(configWithTitle('v0'))]);
-  });
-
-  it('falls back to the default limit for invalid values', () => {
-    process.env[SNAPSHOT_LIMIT_ENV] = 'lots';
-    expect(getSnapshotLimit()).toBe(DEFAULT_SNAPSHOT_LIMIT);
-
-    process.env[SNAPSHOT_LIMIT_ENV] = '5';
-    expect(getSnapshotLimit()).toBe(5);
+    const snapshots = await listConfigSnapshots();
+    expect(snapshots[0]?.createdAt).toBe('2026-10-11T14:02:12.345Z');
+    await expect(readConfigSnapshot(snapshots[0]!.id)).resolves.toMatchObject({
+      raw: serialize(configWithTitle('v21')),
+    });
   });
 
   it('still writes the config when snapshotting fails', async () => {
