@@ -31,7 +31,7 @@ import { RefreshCWIcon } from '@/components/ui/animated-icons/refresh-cw';
 import { CodeEditor } from '@/components/admin/config-editor/code-editor';
 import { getConfigHistory, getConfigSnapshot, restoreConfigSnapshot } from '@/lib/actions';
 import { formatConfigChangeSummary } from '@/lib/config-diff';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   CONFIG_SNAPSHOT_REASONS,
   CONFIG_SNAPSHOT_RESULTS,
@@ -50,18 +50,22 @@ interface ConfigHistoryDialogProps {
   onRestored: (config: DashboardConfig) => void;
 }
 
-const REASON_LABELS: Record<ConfigSnapshotReason, string> = {
-  [CONFIG_SNAPSHOT_REASONS.EDIT]: 'Before edit',
-  [CONFIG_SNAPSHOT_REASONS.REORDER]: 'Before reorder',
-  [CONFIG_SNAPSHOT_REASONS.IMPORT]: 'Before import',
-  [CONFIG_SNAPSHOT_REASONS.EDITOR]: 'Before config editor save',
-  [CONFIG_SNAPSHOT_REASONS.RESTORE]: 'Before restore',
+const REASON_DETAILS: Record<ConfigSnapshotReason, string> = {
+  [CONFIG_SNAPSHOT_REASONS.EDIT]: 'saved before an edit',
+  [CONFIG_SNAPSHOT_REASONS.REORDER]: 'saved before a reorder',
+  [CONFIG_SNAPSHOT_REASONS.IMPORT]: 'saved before an import',
+  [CONFIG_SNAPSHOT_REASONS.EDITOR]: 'saved before a config editor save',
+  [CONFIG_SNAPSHOT_REASONS.RESTORE]: 'saved before a restore',
 };
 
 const timestampFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
-  timeStyle: 'medium',
+  timeStyle: 'short',
 });
+
+function getEntryDetail(entry: ConfigHistoryEntry): string {
+  return `${timestampFormatter.format(new Date(entry.createdAt))} · ${REASON_DETAILS[entry.reason]}`;
+}
 
 function showRestoredToast(snapshotResult: ConfigSnapshotResult) {
   switch (snapshotResult) {
@@ -248,10 +252,8 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
                           isSelected && 'bg-muted'
                         )}
                       >
-                        <div className="text-sm font-medium">{REASON_LABELS[entry.reason]}</div>
-                        <div className="font-mono text-xs text-muted-foreground">
-                          {timestampFormatter.format(new Date(entry.createdAt))}
-                        </div>
+                        <div className="text-sm font-medium">{formatRelativeTime(new Date(entry.createdAt))}</div>
+                        <div className="text-xs text-muted-foreground">{getEntryDetail(entry)}</div>
                         <div className={cn('mt-1 text-xs', isRestorable ? 'text-foreground/80' : 'text-destructive')}>
                           {getSummaryText(entry)}
                         </div>
@@ -321,8 +323,8 @@ export function ConfigHistoryDialog({ open, onOpenChange, onRestored }: ConfigHi
                 ? 'Snapshots are disabled (CRAPDASH_SNAPSHOT_LIMIT=0), so the current configuration will not be saved and this cannot be undone.'
                 : 'The current configuration is saved to history first, so you can undo this.'}
               {selectedEntry && (
-                <span className="mt-2 block font-mono text-xs text-foreground/80">
-                  {REASON_LABELS[selectedEntry.reason]} · {timestampFormatter.format(new Date(selectedEntry.createdAt))}
+                <span className="mt-2 block text-xs text-foreground/80">
+                  {getEntryDetail(selectedEntry)}
                 </span>
               )}
             </AlertDialogDescription>
