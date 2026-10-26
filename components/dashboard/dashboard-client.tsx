@@ -349,8 +349,9 @@ export function DashboardClient({ appTitle, appLogo, categories, services, initi
       </PageHeader>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        {widgets && !searchResult.isSearching && (
-          <div className="mb-8">{widgets}</div>
+        {/* Hide rather than unmount while searching so widget timers (clock ticks, weather refresh) keep running. */}
+        {widgets && (
+          <div className="mb-8" hidden={searchResult.isSearching}>{widgets}</div>
         )}
         {services.length === 0 ? (
           <Empty className="py-16">
