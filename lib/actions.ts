@@ -4,7 +4,9 @@ import { createHash } from 'crypto';
 import path from 'path';
 import { ZodError } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { diffConfigs } from './config-diff';
 import { collectConfigImportWarnings } from './config-import';
+import { listConfigSnapshots, readConfigSnapshot } from './config-snapshots';
 import { readConfig, readRawConfig, writeConfig, writeRawConfigIfRevisionMatches } from './db';
 import { fetchProvisionalServiceFavicon, fetchServiceFavicon } from './favicon';
 import { fetchServiceMetadata as fetchServiceMetadataForUrl, type ServiceMetadata } from './service-metadata';
@@ -36,6 +38,8 @@ import {
 } from './file-utils';
 import { IMAGE_TYPE_ERROR, MAX_FILE_SIZE, isAllowedImageMime } from './image-constants';
 import {
+  CONFIG_SNAPSHOT_REASONS,
+  CONFIG_SNAPSHOT_STATUSES,
   ICON_TYPES,
   type Category,
   type Service,
@@ -49,6 +53,10 @@ import {
   type ImportConfigResult,
   type WeatherLocation,
   type Widget,
+  type ConfigHistory,
+  type ConfigHistoryEntry,
+  type ConfigSnapshot,
+  type ConfigSnapshotResult,
 } from './types';
 
 const MAX_CONFIG_IMPORT_SIZE = 5 * 1024 * 1024;
@@ -67,6 +75,17 @@ interface SaveConfigJsonInput {
 
 type SaveConfigJsonResult = ImportConfigResult & {
   revision: string;
+};
+
+interface RestoreConfigSnapshotInput {
+  id: string;
+  revision: string;
+}
+
+type RestoreConfigSnapshotResult = ImportConfigResult & {
+  revision: string;
+  /** Whether the replaced config was saved to history, so the restore can be undone. */
+  snapshotResult: ConfigSnapshotResult;
 };
 
 async function getPromotedServiceIcon(
@@ -228,7 +247,11 @@ function getConfigRevision(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }
 
-async function parseAndValidateConfigJson(raw: string, field: string): Promise<ActionResult<ImportConfigResult>> {
+async function parseAndValidateConfigJson(
+  raw: string,
+  field: string,
+  { enforceSizeLimit = true }: { enforceSizeLimit?: boolean } = {}
+): Promise<ActionResult<ImportConfigResult>> {
   if (!raw.trim()) {
     return {
       success: false,
@@ -236,7 +259,7 @@ async function parseAndValidateConfigJson(raw: string, field: string): Promise<A
     };
   }
 
-  if (Buffer.byteLength(raw, 'utf-8') > MAX_CONFIG_IMPORT_BYTES) {
+  if (enforceSizeLimit && Buffer.byteLength(raw, 'utf-8') > MAX_CONFIG_IMPORT_BYTES) {
     return {
       success: false,
       errors: [{
@@ -277,8 +300,17 @@ async function parseAndValidateConfigJson(raw: string, field: string): Promise<A
   };
 }
 
+function parseStoredConfig(raw: string): DashboardConfig | null {
+  try {
+    const result = dashboardConfigImportSchema.safeParse(JSON.parse(raw));
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
 async function persistConfigImportResult(result: ImportConfigResult): Promise<void> {
-  await writeConfig(result.config);
+  await writeConfig(result.config, CONFIG_SNAPSHOT_REASONS.IMPORT);
 
   revalidatePath('/');
   revalidatePath('/admin');
@@ -529,9 +561,9 @@ export async function saveConfigJson(input: SaveConfigJsonInput): Promise<Action
     const nextRaw = JSON.stringify(result.data.config, null, 2);
 
     if (input.force || !input.revision) {
-      await writeConfig(result.data.config);
+      await writeConfig(result.data.config, CONFIG_SNAPSHOT_REASONS.EDITOR);
     } else {
-      const wrote = await writeRawConfigIfRevisionMatches(nextRaw, input.revision);
+      const wrote = await writeRawConfigIfRevisionMatches(nextRaw, input.revision, CONFIG_SNAPSHOT_REASONS.EDITOR);
 
       if (!wrote) {
         return {
@@ -559,6 +591,121 @@ export async function saveConfigJson(input: SaveConfigJsonInput): Promise<Action
     return {
       success: false,
       errors: [{ field: 'general', message: 'Failed to save configuration' }],
+    };
+  }
+}
+
+export async function getConfigHistory(): Promise<ActionResult<ConfigHistory>> {
+  try {
+    const [raw, snapshots] = await Promise.all([readRawConfig(), listConfigSnapshots()]);
+    const currentConfig = parseStoredConfig(raw);
+
+    const entries = await Promise.all(
+      snapshots.map(async (info): Promise<ConfigHistoryEntry | null> => {
+        let snapshot: ConfigSnapshot | null;
+        try {
+          snapshot = await readConfigSnapshot(info.id);
+        } catch (error) {
+          // Keep the rest of the history usable when one snapshot can't be read.
+          console.error(`Read config snapshot "${info.id}" error:`, error);
+          return { ...info, status: CONFIG_SNAPSHOT_STATUSES.UNREADABLE, summary: null };
+        }
+
+        // Pruned between listing and reading
+        if (!snapshot) return null;
+
+        const snapshotConfig = parseStoredConfig(snapshot.raw);
+
+        return {
+          ...info,
+          status: snapshotConfig ? CONFIG_SNAPSHOT_STATUSES.VALID : CONFIG_SNAPSHOT_STATUSES.INVALID,
+          summary: currentConfig && snapshotConfig ? diffConfigs(currentConfig, snapshotConfig) : null,
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: {
+        revision: getConfigRevision(raw),
+        snapshots: entries.filter((entry): entry is ConfigHistoryEntry => entry !== null),
+      },
+    };
+  } catch (error) {
+    console.error('Read config history error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to read configuration history' }],
+    };
+  }
+}
+
+export async function getConfigSnapshot(id: string): Promise<ActionResult<ConfigSnapshot>> {
+  try {
+    const snapshot = typeof id === 'string' ? await readConfigSnapshot(id) : null;
+    if (!snapshot) {
+      return { success: false, errors: [{ field: 'id', message: 'Snapshot not found' }] };
+    }
+
+    return { success: true, data: snapshot };
+  } catch (error) {
+    console.error('Read config snapshot error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to read snapshot' }],
+    };
+  }
+}
+
+export async function restoreConfigSnapshot(
+  input: RestoreConfigSnapshotInput
+): Promise<ActionResult<RestoreConfigSnapshotResult>> {
+  try {
+    if (typeof input.revision !== 'string' || !input.revision) {
+      return {
+        success: false,
+        errors: [{ field: 'revision', message: 'Missing configuration revision. Reload history and try again.' }],
+      };
+    }
+
+    const snapshot = typeof input.id === 'string' ? await readConfigSnapshot(input.id) : null;
+    if (!snapshot) {
+      return { success: false, errors: [{ field: 'id', message: 'Snapshot not found' }] };
+    }
+
+    // Snapshots are server-written copies of accepted configs, so the upload size cap doesn't apply.
+    const result = await parseAndValidateConfigJson(snapshot.raw, 'snapshot', { enforceSizeLimit: false });
+    if (!result.success) return result;
+
+    const nextRaw = JSON.stringify(result.data.config, null, 2);
+    const snapshotResult = await writeRawConfigIfRevisionMatches(nextRaw, input.revision, CONFIG_SNAPSHOT_REASONS.RESTORE);
+
+    if (!snapshotResult) {
+      return {
+        success: false,
+        errors: [{
+          field: 'revision',
+          message: 'Configuration changed since history was opened. Reload history and try again.',
+        }],
+      };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      data: {
+        ...result.data,
+        revision: getConfigRevision(nextRaw),
+        snapshotResult,
+      },
+    };
+  } catch (error) {
+    console.error('Restore config snapshot error:', error);
+    return {
+      success: false,
+      errors: [{ field: 'general', message: 'Failed to restore snapshot' }],
     };
   }
 }
@@ -982,7 +1129,7 @@ export async function reorderCategories(orderedIds: string[]): Promise<ActionRes
     // Rebuild categories array in new order
     config.categories = orderedIds.map(id => categoryMap.get(id)!);
 
-    await writeConfig(config);
+    await writeConfig(config, CONFIG_SNAPSHOT_REASONS.REORDER);
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -1021,7 +1168,7 @@ export async function reorderServices(categoryId: string, orderedIds: string[]):
     }
 
     config.services = newServices;
-    await writeConfig(config);
+    await writeConfig(config, CONFIG_SNAPSHOT_REASONS.REORDER);
 
     revalidatePath('/');
     revalidatePath('/admin');
@@ -1187,7 +1334,7 @@ export async function reorderWidgets(orderedIds: string[]): Promise<ActionResult
     }
 
     config.widgets = orderedIds.map((id) => widgetMap.get(id)!);
-    await writeConfig(config);
+    await writeConfig(config, CONFIG_SNAPSHOT_REASONS.REORDER);
 
     revalidatePath('/');
     revalidatePath('/admin');

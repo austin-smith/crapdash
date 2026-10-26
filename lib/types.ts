@@ -142,3 +142,67 @@ export interface ValidationError {
 export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; errors: ValidationError[] };
+
+export const CONFIG_SNAPSHOT_REASONS = {
+  EDIT: 'edit',
+  REORDER: 'reorder',
+  IMPORT: 'import',
+  EDITOR: 'editor',
+  RESTORE: 'restore',
+} as const;
+
+export type ConfigSnapshotReason = typeof CONFIG_SNAPSHOT_REASONS[keyof typeof CONFIG_SNAPSHOT_REASONS];
+
+export const CONFIG_SNAPSHOT_RESULTS = {
+  /** The replaced config is in history (newly saved, or already the latest snapshot). */
+  SAVED: 'saved',
+  /** Nothing was replaced: the content didn't change or there was no config file yet. */
+  UNCHANGED: 'unchanged',
+  /** Saving the snapshot failed; the write went ahead without one. */
+  FAILED: 'failed',
+} as const;
+
+export type ConfigSnapshotResult = typeof CONFIG_SNAPSHOT_RESULTS[keyof typeof CONFIG_SNAPSHOT_RESULTS];
+
+export interface ConfigSnapshotInfo {
+  id: string;
+  createdAt: string;
+  reason: ConfigSnapshotReason;
+}
+
+export interface ConfigSnapshot extends ConfigSnapshotInfo {
+  raw: string;
+}
+
+export interface ConfigCollectionChanges {
+  added: number;
+  removed: number;
+  changed: number;
+}
+
+export interface ConfigChangeSummary {
+  categories: ConfigCollectionChanges;
+  services: ConfigCollectionChanges;
+  widgets: ConfigCollectionChanges;
+  appSettingsChanged: boolean;
+  reordered: boolean;
+}
+
+export const CONFIG_SNAPSHOT_STATUSES = {
+  VALID: 'valid',
+  INVALID: 'invalid',
+  UNREADABLE: 'unreadable',
+} as const;
+
+export type ConfigSnapshotStatus = typeof CONFIG_SNAPSHOT_STATUSES[keyof typeof CONFIG_SNAPSHOT_STATUSES];
+
+export interface ConfigHistoryEntry extends ConfigSnapshotInfo {
+  status: ConfigSnapshotStatus;
+  /** Changes restoring this snapshot would make to the current config; null if either side can't be parsed. */
+  summary: ConfigChangeSummary | null;
+}
+
+export interface ConfigHistory {
+  revision: string;
+  snapshots: ConfigHistoryEntry[];
+}

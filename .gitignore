@@ -51,3 +51,4 @@ Icon[^a-zA-Z]
 /data/config.json
 /data/icons/*
 !/data/icons/.gitkeep
+/data/backups/

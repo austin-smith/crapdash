@@ -19,3 +19,7 @@ export function getConfigLockPath(): string {
 export function getIconsDir(): string {
   return path.join(getDataDir(), 'icons');
 }
+
+export function getBackupsDir(): string {
+  return path.join(getDataDir(), 'backups');
+}
