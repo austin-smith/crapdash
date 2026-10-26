@@ -18,6 +18,7 @@ interface ServiceCardContextProps {
   onEdit: (service: Service) => void;
   onDuplicate?: (service: Service) => void;
   onDelete: (service: Service) => void;
+  onOpen?: (service: Service) => void;
   index: number;
 }
 
@@ -31,10 +32,12 @@ export function ServiceCardContext({
   onEdit,
   onDuplicate,
   onDelete,
+  onOpen,
   index,
 }: ServiceCardContextProps) {
   const handleOpenInNewTab = () => {
     window.open(service.url, '_blank', 'noopener,noreferrer');
+    onOpen?.(service);
   };
 
   /**

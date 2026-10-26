@@ -20,6 +20,7 @@ import { PageFooter } from '@/components/layout/footer/page-footer';
 import { AppearanceProvider } from '@/components/theme/appearance-provider';
 import { usePreferences } from '@/hooks/use-preferences';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useLaunchHistory } from '@/hooks/use-launch-history';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { deleteService } from '@/lib/actions';
 import { DASHBOARD_SERVICE_ID_ATTRIBUTE, getDashboardServiceElementId } from '@/lib/dashboard-dom';
@@ -53,7 +54,7 @@ function getActiveServiceId(
     return selectedServiceId;
   }
 
-  return searchResult.launchServices[0]?.id ?? null;
+  return searchResult.defaultServiceId;
 }
 
 function getWebSearchUrl(
@@ -109,6 +110,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
   const searchInputRef = useRef<HTMLInputElement>(null);
   const selectedServiceIdRef = useRef<string | null>(null);
   const { settings, updateSetting } = usePreferences({ initialSettings });
+  const { launchHistory, recordServiceLaunch } = useLaunchHistory();
   const [showFooter, setShowFooter] = useState(false);
 
   // Edit modal state
@@ -152,7 +154,8 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
     categories,
     services,
     query: searchQuery,
-  }), [categories, services, searchQuery]);
+    launchHistory,
+  }), [categories, services, searchQuery, launchHistory]);
 
   const activeServiceId = useMemo(() => {
     return getActiveServiceId(searchResult, selectedServiceId);
@@ -245,6 +248,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       categories,
       services,
       query: currentQuery,
+      launchHistory,
     });
     const currentActiveServiceId = getActiveServiceId(
       currentSearchResult,
@@ -274,9 +278,22 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       if (!url) return;
 
       event.preventDefault();
+      if (currentActiveService && url === currentActiveService.url) {
+        recordServiceLaunch(currentActiveService.id);
+      }
       openLink(url, settings.openLinksInNewTab);
     }
-  }, [bangs, categories, moveServiceSelection, services, settings.openLinksInNewTab, updateSelectedServiceId, webSearch]);
+  }, [
+    bangs,
+    categories,
+    launchHistory,
+    moveServiceSelection,
+    recordServiceLaunch,
+    services,
+    settings.openLinksInNewTab,
+    updateSelectedServiceId,
+    webSearch,
+  ]);
 
   const handleServiceNavigationKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -317,6 +334,10 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
       updateSelectedServiceId(service.id);
     }
   }, [searchResult.isSearching, updateSelectedServiceId]);
+
+  const handleLaunchService = useCallback((service: Service) => {
+    recordServiceLaunch(service.id);
+  }, [recordServiceLaunch]);
 
   const handleEditService = useCallback((service: Service) => {
     setEditingService(service);
@@ -472,6 +493,7 @@ export function DashboardClient({ appTitle, appLogo, categories, services, webSe
                   onEditService={handleEditService}
                   onDeleteService={handleDeleteService}
                   onFocusService={handleFocusService}
+                  onLaunchService={handleLaunchService}
                   cacheKey={cacheKey}
                   searchTokens={searchResult.tokens}
                   selectedServiceId={activeServiceId}

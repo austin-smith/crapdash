@@ -20,6 +20,7 @@ interface ServiceCardProps {
   revealUrl?: boolean;
   domId?: string;
   onFocus?: (service: Service) => void;
+  onLaunch?: (service: Service) => void;
 }
 
 export function ServiceCard({
@@ -32,6 +33,7 @@ export function ServiceCard({
   revealUrl = false,
   domId,
   onFocus,
+  onLaunch,
 }: ServiceCardProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined);
@@ -63,6 +65,11 @@ export function ServiceCard({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       onFocus={() => onFocus?.(service)}
+      onClick={() => onLaunch?.(service)}
+      onAuxClick={(event) => {
+        // Middle-click opens the link in a new tab
+        if (event.button === 1) onLaunch?.(service);
+      }}
     >
       <Card
         size="sm"

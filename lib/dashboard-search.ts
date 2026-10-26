@@ -1,3 +1,4 @@
+import { getLaunchRankKey, type LaunchHistory } from '@/lib/launch-history';
 import type { Category, Service } from '@/lib/types';
 
 export interface DashboardSearchGroup {
@@ -8,6 +9,8 @@ export interface DashboardSearchGroup {
 export interface DashboardSearchResult {
   groups: DashboardSearchGroup[];
   launchServices: Service[];
+  /** The service Enter opens before the user moves the selection: the most-used match, else the first */
+  defaultServiceId: string | null;
   tokens: string[];
   isSearching: boolean;
   /** Services with a token that only matches the URL host, so the card must reveal its URL. */
@@ -24,6 +27,7 @@ interface DashboardSearchInput {
   categories: Category[];
   services: Service[];
   query: string;
+  launchHistory?: LaunchHistory;
 }
 
 export function getSearchTokens(query: string): string[] {
@@ -101,10 +105,41 @@ function groupServicesByCategory(services: Service[]): Map<string, Service[]> {
   return servicesByCategory;
 }
 
+function getServiceRankKey(service: Service, launchHistory: LaunchHistory): number {
+  const entry = launchHistory[service.id];
+  return entry ? getLaunchRankKey(entry) : Number.NEGATIVE_INFINITY;
+}
+
+/** Most-used services first; services never launched keep their configured order. */
+function sortByLaunchHistory(services: Service[], launchHistory: LaunchHistory): Service[] {
+  return services
+    .map((service) => ({ service, rankKey: getServiceRankKey(service, launchHistory) }))
+    .sort((a, b) => (
+      a.rankKey === b.rankKey ? 0 : a.rankKey > b.rankKey ? -1 : 1
+    ))
+    .map(({ service }) => service);
+}
+
+function getDefaultServiceId(launchServices: Service[], launchHistory: LaunchHistory): string | null {
+  let defaultService = launchServices[0] ?? null;
+  let bestRankKey = Number.NEGATIVE_INFINITY;
+
+  for (const service of launchServices) {
+    const rankKey = getServiceRankKey(service, launchHistory);
+    if (rankKey > bestRankKey) {
+      defaultService = service;
+      bestRankKey = rankKey;
+    }
+  }
+
+  return defaultService?.id ?? null;
+}
+
 export function getDashboardSearchResult({
   categories,
   services,
   query,
+  launchHistory = {},
 }: DashboardSearchInput): DashboardSearchResult {
   const tokens = getSearchTokens(query);
   const isSearching = tokens.length > 0;
@@ -118,10 +153,10 @@ export function getDashboardSearchResult({
     if (categoryServices.length === 0) continue;
 
     const visibleServices = isSearching
-      ? categoryServices.filter((service) => (
+      ? sortByLaunchHistory(categoryServices.filter((service) => (
         includesAllTokens(category.name, tokens) ||
         serviceMatchesTokens(service, category, tokens)
-      ))
+      )), launchHistory)
       : categoryServices;
 
     if (visibleServices.length === 0) continue;
@@ -141,6 +176,7 @@ export function getDashboardSearchResult({
   return {
     groups,
     launchServices,
+    defaultServiceId: isSearching ? getDefaultServiceId(launchServices, launchHistory) : null,
     tokens,
     isSearching,
     hostMatchServiceIds,

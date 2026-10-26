@@ -15,6 +15,7 @@ interface CategoryLayoutProps {
   onEditService: (service: Service) => void;
   onDeleteService: (service: Service) => void;
   onFocusService?: (service: Service) => void;
+  onLaunchService?: (service: Service) => void;
   cacheKey?: number;
   searchTokens?: string[];
   selectedServiceId?: string | null;
@@ -30,6 +31,7 @@ export function CategoryLayout({
   onEditService,
   onDeleteService,
   onFocusService,
+  onLaunchService,
   cacheKey,
   searchTokens = [],
   selectedServiceId,
@@ -65,6 +67,7 @@ export function CategoryLayout({
             service={service}
             onEdit={onEditService}
             onDelete={onDeleteService}
+            onOpen={onLaunchService}
             index={index}
           >
             <ServiceCard
@@ -77,6 +80,7 @@ export function CategoryLayout({
               revealUrl={hostMatchServiceIds?.has(service.id)}
               domId={getDashboardServiceElementId(service.id)}
               onFocus={onFocusService}
+              onLaunch={onLaunchService}
             />
           </ServiceCardContext>
         ))}

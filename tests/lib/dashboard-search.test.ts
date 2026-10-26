@@ -135,6 +135,70 @@ describe('dashboard search', () => {
   });
 });
 
+describe('dashboard search ranking', () => {
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.UTC(2026, 9, 25);
+
+  it('defaults to the first match without launch history', () => {
+    const result = getDashboardSearchResult({ categories, services, query: 'media' });
+
+    expect(result.defaultServiceId).toBe('plex');
+  });
+
+  it('sorts matches within a category by launch history while searching', () => {
+    const launchHistory = {
+      jellyfin: { score: 5, lastLaunchedAt: now },
+      overseerr: { score: 1, lastLaunchedAt: now },
+    };
+    const result = getDashboardSearchResult({ categories, services, query: 'media', launchHistory });
+
+    expect(result.groups[0]?.services.map((service) => service.id)).toEqual([
+      'jellyfin',
+      'overseerr',
+      'plex',
+    ]);
+    expect(result.launchServices.map((service) => service.id)).toEqual([
+      'jellyfin',
+      'overseerr',
+      'plex',
+    ]);
+  });
+
+  it('defaults to the most-used match across categories', () => {
+    const launchHistory = {
+      plex: { score: 1, lastLaunchedAt: now },
+      grafana: { score: 3, lastLaunchedAt: now },
+    };
+    const result = getDashboardSearchResult({ categories, services, query: 'e', launchHistory });
+
+    expect(result.launchServices[0]?.id).toBe('plex');
+    expect(result.defaultServiceId).toBe('grafana');
+  });
+
+  it('prefers recent launches over old habits', () => {
+    const launchHistory = {
+      plex: { score: 8, lastLaunchedAt: now - 70 * day },
+      overseerr: { score: 1, lastLaunchedAt: now },
+    };
+    const result = getDashboardSearchResult({ categories, services, query: 'media', launchHistory });
+
+    expect(result.defaultServiceId).toBe('overseerr');
+  });
+
+  it('keeps configured order when not searching', () => {
+    const launchHistory = { grafana: { score: 9, lastLaunchedAt: now } };
+    const result = getDashboardSearchResult({ categories, services, query: '', launchHistory });
+
+    expect(result.launchServices.map((service) => service.id)).toEqual([
+      'plex',
+      'overseerr',
+      'jellyfin',
+      'grafana',
+    ]);
+    expect(result.defaultServiceId).toBeNull();
+  });
+});
+
 describe('getUrlHostParts', () => {
   it('splits a URL around its host and port', () => {
     expect(getUrlHostParts('http://nas.local:8096/web?x=1')).toEqual({
